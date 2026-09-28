@@ -10,6 +10,7 @@ SPDX-License-Identifier: Apache-2.0 AND GPL-3.0-only
 
     <uses-sdk tools:overrideLibrary="androidx.graphics.path" />
 
+    <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.READ_USER_DICTIONARY" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.VIBRATE" />
@@ -88,6 +89,14 @@ SPDX-License-Identifier: Apache-2.0 AND GPL-3.0-only
             </intent-filter>
             <meta-data android:name="android.view.textservice.scs"
                     android:resource="@xml/spellchecker" />
+        </service>
+
+        <service
+            android:name="com.leanbitlab.leantype.voice.offline.VoiceEngineService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.leanbitlab.leantype.voice.offline.INTERNAL_ENGINE" />
+            </intent-filter>
         </service>
 
         <!-- Activities -->

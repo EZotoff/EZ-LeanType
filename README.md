@@ -90,8 +90,12 @@ LeanType is available in two purpose-built flavors designed to match your exact 
 - **Customizable Actions**: Automatic clipboard copying, direct insertion into active text fields, persistent flash toggle, and search indexing.
 
 ### 🎙️ Voice & Handwriting Input
-- **On-Device Whisper Voice Typing**: High-accuracy speech recognition powered by compact quantized **Whisper models** via the [LeanType Voice Plugin](https://github.com/LeanBitLab/Leantype-Voice-Plugin).
-- **Interactive Voice Toolbar**: Real-time waveform audio visualizer, silence detection sensitivity slider, and background keep-alive options.
+- **Unified On-Device Speech-to-Text**: Fully integrated on-device speech recognition engine running directly inside LeanType with zero external plugin requirements.
+- **🏆 Sber GigaAM v3 E2E RNN-T (Russian SOTA)**: State-of-the-art Russian speech recognition with built-in capitalization and punctuation, achieving 8.4% WER (surpassing Whisper by 3x on Russian ASR) with real-time on-device Sherpa-ONNX execution (~205 MB).
+- **⚡ Parakeet TDT 110M (English Streaming)**: FastConformer Transducer with real-time word-by-word streaming dictation for English, delivering ultra-low latency (RTF < 0.05, ~131 MB).
+- **🌍 Multilingual Whisper**: Embedded whisper.cpp engine supporting Whisper Large-v3-Turbo, Small, Base, and Tiny quantized models for 99+ languages.
+- **🔀 Smart Engine Auto-Routing**: Automatically routes to GigaAM v3 for Russian, Parakeet TDT for English, and Whisper for other languages, or allows explicit engine selection.
+- **Interactive Voice Toolbar**: Real-time waveform audio visualizer, Silero VAD silence detection, customizable silence timeout, and background keep-alive options.
 - **✍️ Handwriting Recognition**: Draw characters or words directly on an expansive writing canvas using the [LeanType Handwriting Plugin](https://github.com/LeanBitLab/Leantype-Handwriting-Plugin) (supported across all flavors), with dedicated settings and in-app/offline model management.
 
 ### ⌨️ Layouts, Audio & Typing
@@ -156,12 +160,29 @@ LeanType is available in two purpose-built flavors designed to match your exact 
 4. Select your provider (or choose **Custom (OpenAI-compatible)** for self-hosted instances), enter your endpoint URL/token, and choose your preferred model and target language.
 5. 👉 **[Read the Full AI & Prompts Guide](docs/FEATURES.md)**
 
-### 2. Voice Input Setup (On-Device Whisper AI)
-1. Download and install the [LeanType Voice Plugin APK](https://github.com/LeanBitLab/LeanType-Voice-Plugin/releases/latest) on your Android device (installed as a background IPC service).
-2. Grant **Microphone permission** to the LeanType Voice Plugin.
-3. In LeanType, open **Settings → Voice typing** (or **Settings → Plugins → Voice**) and tap **Whisper Speech Models**.
-4. Download or import your preferred Whisper model (e.g. *Base* ~74 MB recommended).
-5. Tap the microphone icon on the keyboard toolbar to start speech-to-text!
+### 2. Voice Input Setup (SOTA On-Device Speech-to-Text)
+
+LeanType features built-in on-device STT without needing a companion voice plugin.
+
+#### 📦 Recommended Models & Direct Downloads
+
+| Model | Language & Target | Size | Source Repository |
+| :--- | :--- | :---: | :--- |
+| **GigaAM v3 E2E RNN-T (INT8)** | **Russian (SOTA)**<br>Native punctuation & capitalization, 8.4% WER | **205 MB** | [Hugging Face (`pantinor/gigaam-v3`)](https://huggingface.co/pantinor/gigaam-v3) • [Direct Zip (`gigaam-v3-e2e-rnnt.zip`)](https://github.com/LeanBitLab/LeanType/releases/download/beta-427-1/gigaam-v3-e2e-rnnt.zip) |
+| **Parakeet TDT 110M (INT8)** | **English (Streaming)**<br>FastConformer real-time word-by-word streaming | **131 MB** | [Hugging Face (`csukuangfj/sherpa-onnx-nemo-fast-conformer-tdt-en-110m`)](https://huggingface.co/csukuangfj/sherpa-onnx-nemo-fast-conformer-tdt-en-110m) • [Direct Zip (`parakeet-tdt-110m.zip`)](https://github.com/LeanBitLab/LeanType/releases/download/beta-427-1/parakeet-tdt-110m.zip) |
+| **Whisper Large-v3-Turbo** | **Multilingual (99+ languages)**<br>Flagship Whisper accuracy | **548 MB** | [Hugging Face (`ggerganov/whisper.cpp`)](https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo-q5_0.bin) |
+
+#### 📥 Installation & Setup Instructions
+1. **Install LeanType APK**: Install the latest `1-LeanType_4.2.7-standard-debug.apk` (or release APK) on your Android device.
+2. **Grant Microphone Permission**: Enable microphone access when prompted (or via Android Settings → Apps → LeanType → Permissions → Microphone).
+3. **Download Model Archive**: Download either **`gigaam-v3-e2e-rnnt.zip`** (for Russian) or **`parakeet-tdt-110m.zip`** (for English) from the links above.
+4. **Import Model in LeanType**:
+   - Open LeanType **Settings → Voice typing → Manage & Download Models**.
+   - Under **Custom GigaAM Model** (or **Custom Parakeet Model**), tap **Import File**.
+   - Select the downloaded `.zip` (or `.bin`) file from your device storage. LeanType unpacks and verifies all model weights automatically.
+5. **Configure Engine**:
+   - In **Settings → Voice typing → Offline Voice Engine**, set to **Auto** (GigaAM v3 for Russian, Parakeet TDT for English, Whisper for others) or explicitly select your preferred engine.
+6. **Start Typing**: Tap the microphone icon on the keyboard toolbar and speak!
 
 ### 3. Translation Setup (Offline & Online)
 1. **Online Flavor (`Standard`)**: Open **Settings → Translation** and tap **Download Plugin** to install the [LeanType Translation Plugin](https://github.com/LeanBitLab/LeanType-Translation-Plugin/releases/latest) automatically.

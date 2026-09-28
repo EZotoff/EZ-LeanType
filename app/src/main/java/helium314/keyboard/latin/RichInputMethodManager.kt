@@ -79,6 +79,7 @@ class RichInputMethodManager private constructor() {
             val raw = provider ?: when {
                 p.getBoolean(VoiceConstants.PREF_VOICE_OFFLINE_ENABLED, false) -> VoiceConstants.VOICE_PROVIDER_OFFLINE
                 isOnlineFlavor && p.getBoolean(VoiceConstants.PREF_VOICE_ONLINE_ENABLED, false) -> VoiceConstants.VOICE_PROVIDER_ONLINE
+                helium314.keyboard.latin.voice.VoicePluginManager(context).isPluginInstalled() -> VoiceConstants.VOICE_PROVIDER_OFFLINE
                 else -> VoiceConstants.VOICE_PROVIDER_THIRD_PARTY
             }
             return if (!isOnlineFlavor && raw == VoiceConstants.VOICE_PROVIDER_ONLINE) {

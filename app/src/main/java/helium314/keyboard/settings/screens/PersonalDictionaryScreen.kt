@@ -241,6 +241,14 @@ private fun EditWordDialog(word: Word, locale: Locale?, onDismissRequest: () -> 
 }
 
 private fun deleteWord(wordDetails: Word, locale: Locale?, resolver: ContentResolver) {
+    if (wordDetails.id > 0) {
+        resolver.delete(
+            UserDictionary.Words.CONTENT_URI,
+            "${UserDictionary.Words._ID}=?",
+            arrayOf(wordDetails.id.toString())
+        )
+        return
+    }
     val (word, shortcut, weightInt) = wordDetails
     val weight = weightInt.toString()
     if (shortcut.isNullOrBlank()) {
@@ -284,12 +292,22 @@ private fun doesWordExist(word: String, shortcut: String?, locale: Locale?, cont
             selectArgs = arrayOf(word, shortcut)
         }
     } else {
-        if (shortcut.isNullOrEmpty()) {
-            select = "${UserDictionary.Words.WORD}=? AND ${UserDictionary.Words.LOCALE}=? AND (${UserDictionary.Words.SHORTCUT} is null OR ${UserDictionary.Words.SHORTCUT}='')"
-            selectArgs = arrayOf(word, locale.toString())
+        val localeMatch = if (locale.language == "ru" || locale.country.isEmpty()) {
+            "(${UserDictionary.Words.LOCALE}=? OR ${UserDictionary.Words.LOCALE} LIKE ?)"
         } else {
-            select = "${UserDictionary.Words.WORD}=? AND ${UserDictionary.Words.LOCALE}=? AND ${UserDictionary.Words.SHORTCUT}=?"
-            selectArgs = arrayOf(word, locale.toString(), shortcut)
+            "${UserDictionary.Words.LOCALE}=?"
+        }
+        val localeArgs = if (locale.language == "ru" || locale.country.isEmpty()) {
+            arrayOf(locale.toString(), "${locale.language}_%")
+        } else {
+            arrayOf(locale.toString())
+        }
+        if (shortcut.isNullOrEmpty()) {
+            select = "${UserDictionary.Words.WORD}=? AND $localeMatch AND (${UserDictionary.Words.SHORTCUT} is null OR ${UserDictionary.Words.SHORTCUT}='')"
+            selectArgs = arrayOf(word) + localeArgs
+        } else {
+            select = "${UserDictionary.Words.WORD}=? AND $localeMatch AND ${UserDictionary.Words.SHORTCUT}=?"
+            selectArgs = arrayOf(word) + localeArgs + arrayOf(shortcut)
         }
     }
     val cursor = context.contentResolver.query(UserDictionary.Words.CONTENT_URI, hasWordProjection, select, selectArgs, null)
@@ -313,7 +331,13 @@ fun Locale?.getLocaleDisplayNameForUserDictSettings(context: Context) =
     this?.localizedDisplayName(context.resources) ?: context.resources.getString(R.string.user_dict_settings_all_languages)
 
 // weight is frequency but different name towards user
-private data class Word(val word: String, val shortcut: String?, val weight: Int?)
+private data class Word(
+    val word: String,
+    val shortcut: String?,
+    val weight: Int?,
+    val id: Long = 0L,
+    val locale: String? = null
+)
 
 // getting all words instead of reading directly cursor, because filteredItems expects a list
 private fun getAll(locale: Locale?, context: Context): List<Word> {
@@ -321,11 +345,22 @@ private fun getAll(locale: Locale?, context: Context): List<Word> {
 
     if (!cursor.moveToFirst()) return emptyList()
     val result = mutableListOf<Word>()
+    val idIndex = cursor.getColumnIndexOrThrow(UserDictionary.Words._ID)
     val wordIndex = cursor.getColumnIndexOrThrow(UserDictionary.Words.WORD)
     val shortcutIndex = cursor.getColumnIndexOrThrow(UserDictionary.Words.SHORTCUT)
     val frequencyIndex = cursor.getColumnIndexOrThrow(UserDictionary.Words.FREQUENCY)
+    val localeIndex = cursor.getColumnIndex(UserDictionary.Words.LOCALE)
     while (!cursor.isAfterLast) {
-        result.add(Word(cursor.getString(wordIndex), cursor.getString(shortcutIndex), cursor.getInt(frequencyIndex)))
+        val wordLocale = if (localeIndex >= 0) cursor.getString(localeIndex) else null
+        result.add(
+            Word(
+                word = cursor.getString(wordIndex),
+                shortcut = cursor.getString(shortcutIndex),
+                weight = cursor.getInt(frequencyIndex),
+                id = cursor.getLong(idIndex),
+                locale = wordLocale
+            )
+        )
         cursor.moveToNext()
     }
     cursor.close()
@@ -346,6 +381,9 @@ private fun createCursor(locale: Locale?, context: Context): Cursor? {
     if (locale == null) {
         select = QUERY_SELECTION_ALL_LOCALES
         selectArgs = null
+    } else if (locale.language == "ru" || locale.country.isEmpty()) {
+        select = "${UserDictionary.Words.LOCALE}=? OR ${UserDictionary.Words.LOCALE} LIKE ?"
+        selectArgs = arrayOf(locale.toString(), "${locale.language}_%")
     } else {
         select = QUERY_SELECTION
         // requires use of locale string (as opposed to more useful language tag) for interaction with Android system
@@ -358,7 +396,7 @@ private fun createCursor(locale: Locale?, context: Context): Cursor? {
 }
 
 private val QUERY_PROJECTION =
-    arrayOf(UserDictionary.Words._ID, UserDictionary.Words.WORD, UserDictionary.Words.SHORTCUT, UserDictionary.Words.FREQUENCY)
+    arrayOf(UserDictionary.Words._ID, UserDictionary.Words.WORD, UserDictionary.Words.SHORTCUT, UserDictionary.Words.FREQUENCY, UserDictionary.Words.LOCALE)
 // Case-insensitive sort
 private const val SORT_ORDER = "UPPER(" + UserDictionary.Words.WORD + ")"
 

@@ -11,6 +11,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -22,6 +23,7 @@ import helium314.keyboard.latin.common.splitOnWhitespace
 import helium314.keyboard.latin.utils.SubtypeLocaleUtils
 import helium314.keyboard.latin.utils.SubtypeSettings.getEnabledSubtypes
 import helium314.keyboard.latin.utils.SubtypeSettings.getSystemLocales
+import helium314.keyboard.latin.utils.UserDictionaryUtils
 import helium314.keyboard.latin.utils.getSecondaryLocales
 import helium314.keyboard.latin.utils.locale
 import helium314.keyboard.settings.NextScreenIcon
@@ -64,6 +66,11 @@ fun PersonalDictionariesScreen(
 ) {
     // todo: consider adding "add word" button like old settings (requires additional navigation parameter, should not be hard)
     val ctx = LocalContext.current
+    LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) {
+            UserDictionaryUtils.migrateMisattributedCyrillicWords(ctx.contentResolver)
+        }
+    }
     val locales: MutableList<Locale?> = getSortedDictionaryLocales().toMutableList()
     locales.add(0, null)
     SearchScreen(
@@ -264,7 +271,25 @@ fun getSortedDictionaryLocales(): TreeSet<Locale> {
         }
     }
 
-    sortedLocales.addAll(getSystemLocales())
+    val systemLocales = getSystemLocales()
+    for (sysLocale in systemLocales) {
+        val alreadyCovered = sortedLocales.any { existing ->
+            existing.language == sysLocale.language && (
+                existing.language == "ru" ||
+                existing.country.isEmpty() ||
+                existing.country.equals(sysLocale.country, ignoreCase = true)
+            )
+        }
+        if (!alreadyCovered) {
+            sortedLocales.add(sysLocale)
+        }
+    }
+
+    // Collapse Russian country variants (ru_RU, etc.) into canonical Locale("ru")
+    if (sortedLocales.any { it.language == "ru" }) {
+        sortedLocales.removeAll { it.language == "ru" && it.country.isNotEmpty() }
+        sortedLocales.add(Locale("ru"))
+    }
     return sortedLocales
 }
 

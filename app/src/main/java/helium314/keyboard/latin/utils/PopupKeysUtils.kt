@@ -38,6 +38,25 @@ fun createPopupKeysArray(popupSet: PopupSet<*>?, params: KeyboardParams, label: 
     }
     if (!popupKeysDelegate.isInitialized() || popupKeys.isEmpty())
         return null
+
+    val hint = getHintLabel(popupSet, params, label)
+    if (!hint.isNullOrEmpty()) {
+        val list = popupKeys.toMutableList()
+        val existing = list.firstOrNull { it == hint || KeySpecParser.getLabel(transformLabel(it, params)) == hint }
+        val insertIndex = list.indexOfFirst { !(it.startsWith("!") && it.count { c -> c == '!' } >= 2) }.let {
+            if (it == -1) 0 else it
+        }
+        if (existing == null) {
+            list.add(insertIndex, hint)
+            popupKeys.clear()
+            popupKeys.addAll(list)
+        } else if (list.indexOf(existing) != insertIndex) {
+            list.remove(existing)
+            list.add(insertIndex, existing)
+            popupKeys.clear()
+            popupKeys.addAll(list)
+        }
+    }
     val fco = popupKeys.firstOrNull { it.startsWith(Key.POPUP_KEYS_FIXED_ORDER) }
     if (fco != null && fco.substringAfter(Key.POPUP_KEYS_FIXED_ORDER).toIntOrNull() != popupKeys.size - 1) {
         val fcoExpected = popupKeys.size - popupKeys.count { it.startsWith("!") && it.endsWith("!") } - 1
@@ -92,7 +111,7 @@ private fun transformLabel(label: String, params: KeyboardParams): String =
                 params.mLocaleKeyboardInfos.currencyKey.second[index - 1]
             else label
         }
-    } else if (params.mId.mSubtype.isRtlSubtype) {
+    } else if (params.mId.mSubtype?.isRtlSubtype == true) {
         label.rtlLabel(params)
     } else label
 

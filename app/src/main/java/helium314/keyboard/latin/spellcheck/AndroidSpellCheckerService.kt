@@ -16,6 +16,7 @@ import android.view.textservice.SuggestionsInfo
 import helium314.keyboard.keyboard.Keyboard
 import helium314.keyboard.keyboard.KeyboardId
 import helium314.keyboard.keyboard.KeyboardLayoutSet
+import helium314.keyboard.latin.DictionaryFacilitator
 import helium314.keyboard.latin.DictionaryFacilitatorLruCache
 import helium314.keyboard.latin.InputAttributes
 import helium314.keyboard.latin.NgramContext
@@ -61,6 +62,7 @@ class AndroidSpellCheckerService : SpellCheckerService(), SharedPreferences.OnSh
 
     override fun onCreate() {
         super.onCreate()
+        Settings.init(this)
         mRecommendedThreshold = getString(R.string.spellchecker_recommended_threshold_value).toFloat()
         val prefs = prefs()
         prefs.registerOnSharedPreferenceChangeListener(this)
@@ -106,15 +108,105 @@ class AndroidSpellCheckerService : SpellCheckerService(), SharedPreferences.OnSh
         mKeyboardCache.clear()
     }
 
+    private val RUSSIAN_INFLECTION_SUFFIXES = arrayOf(
+        // Participles & gerunds
+        "вшись", "вшийся", "вшаяся", "вшееся", "вшиеся",
+        "ющий", "ющая", "ющее", "ющие", "ющего", "ющей", "ющим", "ющих",
+        "ящий", "ящая", "ящее", "ящие", "ящего", "ящей", "ящим", "ящих",
+        "ущий", "ущая", "ущее", "ущие", "ущего", "ущей", "ущим", "ущих",
+        "нный", "нная", "нное", "нные", "нного", "нной", "нным", "нных",
+        "вший", "вшая", "вшее", "вшие", "вшего", "вшей", "вшим", "вших",
+        "щий", "щая", "щее", "щие", "щего", "щей", "щим", "щих",
+        "емый", "емая", "емое", "емые", "емого", "емой", "емым", "емых",
+        "имый", "имая", "имое", "имые",
+        // Adjective superlatives
+        "ейший", "ейшая", "ейшее", "ейшие", "айший", "айшая", "айшее", "айшие"
+    )
+
+    private fun checkRussianInflections(facilitator: DictionaryFacilitator, word: String): Boolean {
+        if (word.length <= 3) return false
+        val baseWord = if ((word.endsWith("ся") || word.endsWith("сь")) && word.length > 4) {
+            word.substring(0, word.length - 2)
+        } else {
+            word
+        }
+        if (baseWord != word && facilitator.isValidSpellingWord(baseWord)) return true
+
+        for (suffix in RUSSIAN_INFLECTION_SUFFIXES) {
+            if (baseWord.endsWith(suffix) && baseWord.length > suffix.length + 2) {
+                val stem = baseWord.substring(0, baseWord.length - suffix.length)
+                if (facilitator.isValidSpellingWord(stem + "ть")) return true
+                if (facilitator.isValidSpellingWord(stem + "ить")) return true
+                if (facilitator.isValidSpellingWord(stem + "ать")) return true
+                if (facilitator.isValidSpellingWord(stem + "еть")) return true
+                if (facilitator.isValidSpellingWord(stem + "ый")) return true
+                if (facilitator.isValidSpellingWord(stem + "ий")) return true
+            }
+        }
+        return false
+    }
+
+    private fun checkWordInFacilitator(facilitator: DictionaryFacilitator, word: String): Boolean {
+        if (facilitator.isValidSpellingWord(word)) return true
+
+        // Check ё <-> е substitution for Russian words
+        val hasYo = word.contains('ё') || word.contains('Ё')
+        if (hasYo) {
+            val normalized = word.replace('ё', 'е').replace('Ё', 'Е')
+            if (facilitator.isValidSpellingWord(normalized)) return true
+            if (checkRussianInflections(facilitator, normalized)) return true
+        }
+
+        // Check Russian morphology and inflections
+        val firstCp = if (word.isNotEmpty()) word.codePointAt(0) else 0
+        if (ScriptUtils.isLetterPartOfScript(firstCp, ScriptUtils.SCRIPT_CYRILLIC)) {
+            if (checkRussianInflections(facilitator, word)) return true
+        }
+
+        // Check hyphenated words (e.g. по-русски, кто-то, из-за)
+        if (word.contains('-')) {
+            val parts = word.split('-')
+            if (parts.all { it.isEmpty() || checkWordInFacilitator(facilitator, it) }) {
+                return true
+            }
+        }
+        return false
+    }
+
     fun isValidWord(locale: Locale, word: String): Boolean {
         val prefs = prefs()
         if (!prefs.getBoolean(Settings.PREF_ENABLE_SPELL_CHECKER_SERVICE, Defaults.PREF_ENABLE_SPELL_CHECKER_SERVICE)) {
             return true
         }
+        if (word.isEmpty()) return true
         mSemaphore.acquireUninterruptibly()
         try {
             val dictionaryFacilitatorForLocale = mDictionaryFacilitatorCache.get(locale)
-            return dictionaryFacilitatorForLocale.isValidSpellingWord(word)
+            if (checkWordInFacilitator(dictionaryFacilitatorForLocale, word)) return true
+
+            // Multilingual: if word has Cyrillic characters, check Russian dictionary
+            val firstCp = word.codePointAt(0)
+            if (ScriptUtils.isLetterPartOfScript(firstCp, ScriptUtils.SCRIPT_CYRILLIC)) {
+                if (locale.language != "ru") {
+                    val ruFacilitator = mDictionaryFacilitatorCache.get(Locale("ru"))
+                    if (checkWordInFacilitator(ruFacilitator, word)) return true
+                }
+            } else if (ScriptUtils.isLetterPartOfScript(firstCp, ScriptUtils.SCRIPT_LATIN)) {
+                if (locale.language != "en") {
+                    val enFacilitator = mDictionaryFacilitatorCache.get(Locale.ENGLISH)
+                    if (checkWordInFacilitator(enFacilitator, word)) return true
+                }
+            }
+
+            // Also check other enabled subtypes (for bilingual setups)
+            for (enabledSubtype in SubtypeSettings.getEnabledSubtypes(true)) {
+                val subtypeLocale = enabledSubtype.locale()
+                if (subtypeLocale.language != locale.language) {
+                    val facilitator = mDictionaryFacilitatorCache.get(subtypeLocale)
+                    if (checkWordInFacilitator(facilitator, word)) return true
+                }
+            }
+            return false
         } finally {
             mSemaphore.release()
         }
@@ -149,7 +241,12 @@ class AndroidSpellCheckerService : SpellCheckerService(), SharedPreferences.OnSh
         mSemaphore.acquireUninterruptibly()
         try {
             val dictionaryFacilitator = mDictionaryFacilitatorCache.get(locale)
-            return dictionaryFacilitator.hasAtLeastOneInitializedMainDictionary()
+            if (dictionaryFacilitator.hasAtLeastOneInitializedMainDictionary()) return true
+            if (locale.language == "ru") {
+                val ruFacilitator = mDictionaryFacilitatorCache.get(Locale("ru"))
+                return ruFacilitator.hasAtLeastOneInitializedMainDictionary()
+            }
+            return false
         } finally {
             mSemaphore.release()
         }

@@ -29,15 +29,17 @@ object DictionaryFactory {
     fun createMainDictionaryCollection(context: Context, locale: Locale, useEmojiDict: Boolean): DictionaryCollection {
         val dictList = LinkedList<Dictionary>()
         val (extracted, nonExtracted) = getAvailableDictsForLocale(locale, context, useEmojiDict)
-        extracted.sortedBy { !it.name.endsWith(DictionaryInfoUtils.USER_DICTIONARY_SUFFIX) }.forEach {
-            // we sort to have user dicts first, so they have priority over internal dicts of the same type
-            checkAndAddDictionaryToListIfNewType(it, dictList, locale, context)
+        val loadedFileNames = mutableSetOf<String>()
+
+        // 1. Process extracted files (both user-imported dicts and previously extracted asset dicts)
+        extracted.forEach { file ->
+            checkAndAddDictionaryToList(file, dictList, locale, context, loadedFileNames)
         }
+
+        // 2. Extract and load any asset dictionaries not yet extracted
         nonExtracted.forEach { filename ->
-            val type = filename.substringBefore("_")
-            if (dictList.any { it.mDictType == type }) return@forEach
             val extractedFile = DictionaryInfoUtils.extractAssetsDictionary(filename, locale, context) ?: return@forEach
-            checkAndAddDictionaryToListIfNewType(extractedFile, dictList, locale, context)
+            checkAndAddDictionaryToList(extractedFile, dictList, locale, context, loadedFileNames)
         }
         return DictionaryCollection(Dictionary.TYPE_MAIN, locale, dictList, FloatArray(dictList.size) { 1f })
     }
@@ -52,8 +54,11 @@ object DictionaryFactory {
             ?.groupBy { it.substringBefore("_") }
             ?.forEach { (dictType, dicts) ->
                 if (!useEmojiDict && dictType == Dictionary.TYPE_EMOJI) return@forEach
-                if (cachedDicts.any { it.name == "$dictType.dict" })
-                    return@forEach // dictionary is already extracted (can't be old because of cleanup on upgrade)
+                val hasValidCached = cachedDicts.any { 
+                    it.name == "$dictType.dict" && it.length() > 1000 && DictionaryInfoUtils.getDictionaryFileHeaderOrNull(it) != null 
+                }
+                if (hasValidCached)
+                    return@forEach // dictionary is already extracted and valid
                 val bestMatch = LocaleUtils.getBestMatch(locale, dicts) {
                     DictionaryInfoUtils.extractLocaleFromAssetsDictionaryFile(it)
                 } ?: return@forEach
@@ -65,18 +70,32 @@ object DictionaryFactory {
     /**
      * add dictionary created from [file] to [dicts]
      * if [file] cannot be loaded it is deleted
-     * if the dictionary type already exists in [dicts], the [file] is skipped
+     * For main dictionaries, allows both user dictionaries and internal dictionaries.
+     * For non-main dictionaries (e.g. emoji), only allows one of the same type.
      */
-    private fun checkAndAddDictionaryToListIfNewType(file: File, dicts: MutableList<Dictionary>, locale: Locale, context: Context) {
+    private fun checkAndAddDictionaryToList(
+        file: File,
+        dicts: MutableList<Dictionary>,
+        locale: Locale,
+        context: Context,
+        loadedFileNames: MutableSet<String>
+    ) {
+        if (!loadedFileNames.add(file.name)) {
+            // Already loaded this exact file
+            return
+        }
         val header = DictionaryInfoUtils.getDictionaryFileHeaderOrNull(file)
         if (header != null) {
             val prefs = context.prefs()
             val dictType = header.mIdString.split(":").first()
             if (dictType == Dictionary.TYPE_MAIN) {
                 val localeTag = locale.toLanguageTag().lowercase().replace("-", "_")
-                val mainPrefKey = "pref_dict_enabled_main:$localeTag"
-                if (!prefs.getBoolean(mainPrefKey, true)) {
-                    Log.i("DictionaryFactory", "skipping disabled main dictionary for locale $locale")
+                val langTag = locale.language.lowercase()
+                val isExplicitlyDisabled = !prefs.getBoolean("pref_dict_enabled_main:$localeTag", true) ||
+                        !prefs.getBoolean("pref_dict_enabled_main:$langTag", true) ||
+                        !prefs.getBoolean("pref_dict_enabled_${header.mIdString}", true)
+                if (isExplicitlyDisabled) {
+                    Log.i("DictionaryFactory", "skipping disabled main dictionary ${file.name} for locale $locale")
                     return
                 }
             } else {
@@ -84,10 +103,14 @@ object DictionaryFactory {
                     Log.i("DictionaryFactory", "skipping disabled addon dictionary ${header.mIdString}")
                     return
                 }
+                // For non-main addon dictionaries (e.g. emoji), only keep one of each type
+                if (dicts.any { it.mDictType == dictType }) {
+                    return
+                }
             }
         }
         val dictionary = getDictionary(file, locale) ?: return
-        if (dicts.any { it.mDictType == dictionary.mDictType }) {
+        if (dictionary.mDictType != Dictionary.TYPE_MAIN && dicts.any { it.mDictType == dictionary.mDictType }) {
             dictionary.close()
             return
         }

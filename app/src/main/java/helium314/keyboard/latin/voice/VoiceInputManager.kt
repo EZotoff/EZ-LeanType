@@ -157,6 +157,20 @@ class VoiceInputManager(
         sessionEmittedText = ""
         isCurrentSessionOnline = false
 
+        val initialIc = ims.currentInputConnection
+        val beforeCursor = initialIc?.getTextBeforeCursor(2, 0)?.toString()
+        if (!beforeCursor.isNullOrEmpty()) {
+            val lastChar = beforeCursor.last()
+            if (!Character.isWhitespace(lastChar)) {
+                initialIc.commitText(" ", 1)
+            }
+            val trimmedBefore = beforeCursor.trimEnd()
+            if (trimmedBefore.isNotEmpty()) {
+                val lastNonSpace = trimmedBefore.last()
+                needsCapitalStart = lastNonSpace in ".!?"
+            }
+        }
+
         if (!isConnected) {
             updateState(VoiceState.CONNECTING_PLUGIN)
             pluginManager.setConnectionListener(object : VoicePluginManager.PluginConnectionListener {
@@ -196,6 +210,21 @@ class VoiceInputManager(
         needsCapitalStart = true
         sessionEmittedText = ""
         isCurrentSessionOnline = true
+
+        val initialIc = ims.currentInputConnection
+        val beforeCursor = initialIc?.getTextBeforeCursor(2, 0)?.toString()
+        if (!beforeCursor.isNullOrEmpty()) {
+            val lastChar = beforeCursor.last()
+            if (!Character.isWhitespace(lastChar)) {
+                initialIc.commitText(" ", 1)
+            }
+            val trimmedBefore = beforeCursor.trimEnd()
+            if (trimmedBefore.isNotEmpty()) {
+                val lastNonSpace = trimmedBefore.last()
+                needsCapitalStart = lastNonSpace in ".!?"
+            }
+        }
+
         synchronized(onlineAudioBuffer) {
             onlineAudioBuffer.reset()
         }
@@ -688,7 +717,7 @@ class VoiceInputManager(
         } else {
             rawText
         }
-        val trimmed = processedRaw.trim()
+        val trimmed = processedRaw.trim().replace(Regex("\\s+"), " ")
 
         // If onFinal has empty text (e.g. silence timeout fired after audio stream closed),
         // lock whatever text was already emitted during partials and commit a trailing space.
@@ -719,6 +748,11 @@ class VoiceInputManager(
 
         val current = sessionEmittedText
 
+        // During streaming partials, do not regress if incoming partial is just a shorter prefix of what is already on screen
+        if (!isFinal && fullTargetText.length < current.length && current.startsWith(fullTargetText)) {
+            return
+        }
+
         // Find longest common prefix between what's in the editor from this utterance and the new target
         var commonPrefixLen = 0
         val minLen = minOf(current.length, fullTargetText.length)
@@ -739,6 +773,15 @@ class VoiceInputManager(
         try {
             if (charsToDelete > 0) {
                 ic.deleteSurroundingText(charsToDelete, 0)
+            }
+            if (current.isEmpty() && charsToDelete == 0 && textToAppend.isNotEmpty()) {
+                val firstChar = textToAppend.first()
+                if (firstChar in ",.?!;:") {
+                    val before = ic.getTextBeforeCursor(1, 0)?.toString()
+                    if (before == " ") {
+                        ic.deleteSurroundingText(1, 0)
+                    }
+                }
             }
             if (textToAppend.isNotEmpty()) {
                 ic.commitText(textToAppend, 1)

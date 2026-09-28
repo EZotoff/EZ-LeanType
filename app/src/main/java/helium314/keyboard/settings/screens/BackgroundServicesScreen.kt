@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 package helium314.keyboard.settings.screens
 
+import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
@@ -91,6 +93,27 @@ fun BackgroundServicesScreen(
                     spellCheckerEnabled = false
                     prefs.edit().putBoolean(Settings.PREF_ENABLE_SPELL_CHECKER_SERVICE, false).apply()
                     Toast.makeText(context, "Spell Checker stopped & memory flushed", Toast.LENGTH_SHORT).show()
+                },
+                extraAction = {
+                    OutlinedButton(
+                        onClick = {
+                            val intent = Intent("android.settings.SPELL_CHECKERS_SETTINGS").apply {
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            }
+                            try {
+                                context.startActivity(intent)
+                            } catch (_: Exception) {
+                                try {
+                                    context.startActivity(Intent(android.provider.Settings.ACTION_SETTINGS).apply {
+                                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                    })
+                                } catch (_: Exception) {}
+                            }
+                        },
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp)
+                    ) {
+                        Text("Android Spell Checker", style = MaterialTheme.typography.labelSmall)
+                    }
                 }
             )
 
@@ -155,7 +178,8 @@ private fun CompactServiceCard(
     status: String,
     enabled: Boolean,
     onToggle: (Boolean) -> Unit,
-    onStopClicked: () -> Unit
+    onStopClicked: () -> Unit,
+    extraAction: (@Composable () -> Unit)? = null
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -192,14 +216,27 @@ private fun CompactServiceCard(
                     modifier = Modifier.padding(start = 8.dp)
                 )
             }
-            if (enabled) {
+            if (enabled || extraAction != null) {
                 Spacer(modifier = Modifier.height(4.dp))
-                OutlinedButton(
-                    onClick = onStopClicked,
-                    modifier = Modifier.align(Alignment.End),
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Stop & Free Memory", style = MaterialTheme.typography.labelSmall)
+                    if (extraAction != null) {
+                        extraAction()
+                    }
+                    if (enabled) {
+                        if (extraAction != null) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
+                        OutlinedButton(
+                            onClick = onStopClicked,
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp)
+                        ) {
+                            Text("Stop & Free Memory", style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
                 }
             }
         }

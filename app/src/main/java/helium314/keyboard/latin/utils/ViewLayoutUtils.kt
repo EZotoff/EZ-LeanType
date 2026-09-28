@@ -37,7 +37,13 @@ object ViewLayoutUtils {
         val params = window.attributes
         if (params != null && params.height != layoutHeight) {
             params.height = layoutHeight
-            window.attributes = params
+            try {
+                if (window.decorView.isAttachedToWindow) {
+                    window.attributes = params
+                }
+            } catch (e: Exception) {
+                Log.w("ViewLayoutUtils", "Failed to update layout height of window", e)
+            }
         }
     }
 

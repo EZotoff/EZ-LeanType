@@ -433,11 +433,15 @@ class LatinIME : InputMethodService(),
             }
         }
         
-        keyboardSwitcher.onConfigurationChanged(conf)
-        keyboardSwitcher.updateKeyboardTheme(displayContext ?: this)
-        floatingKeyboardManager?.resetDragAndResizeState()
-        floatingKeyboardManager?.clampPositionToScreen()
-        setNavigationBarColor()
+        try {
+            keyboardSwitcher.onConfigurationChanged(conf)
+            keyboardSwitcher.updateKeyboardTheme(displayContext ?: this)
+            floatingKeyboardManager?.resetDragAndResizeState()
+            floatingKeyboardManager?.clampPositionToScreen()
+            setNavigationBarColor()
+        } catch (e: Exception) {
+            Log.w(TAG, "Exception during onConfigurationChanged", e)
+        }
     }
 
     override fun onInitializeInterface() {
@@ -1643,37 +1647,51 @@ class LatinIME : InputMethodService(),
     @Suppress("DEPRECATION")
     private fun setNavigationBarColor() {
         val window = window?.window ?: return
-        if (!originalNavBarSaved) {
-            originalNavBarColor = window.navigationBarColor
-            originalNavBarFlags = window.decorView.systemUiVisibility
-            originalNavBarSaved = true
+        val decorView = window.decorView
+        if (!decorView.isAttachedToWindow) {
+            decorView.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+                override fun onViewAttachedToWindow(v: View) {
+                    decorView.removeOnAttachStateChangeListener(this)
+                    setNavigationBarColor()
+                }
+                override fun onViewDetachedFromWindow(v: View) {}
+            })
+            return
         }
-        if (floatingKeyboardManager?.isFloating == true) {
-            window.navigationBarColor = Color.TRANSPARENT
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                window.isNavigationBarContrastEnforced = false
+        try {
+            if (!originalNavBarSaved) {
+                originalNavBarColor = window.navigationBarColor
+                originalNavBarFlags = decorView.systemUiVisibility
+                originalNavBarSaved = true
             }
-            return
-        }
-        val settingsValues = settings.current
-        if (!settingsValues.mCustomNavBarColor) {
-            clearNavigationBarColor()
-            return
-        }
-        
-        window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION)
-        window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
-        val color = settingsValues.mColors.get(ColorType.NAVIGATION_BAR)
-        window.navigationBarColor = color
-        
-        val view = window.decorView
-        val controller = WindowCompat.getInsetsController(window, view)
-        if (controller != null) {
-            controller.isAppearanceLightNavigationBars = isBrightColor(color)
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            var flags = view.systemUiVisibility
-            flags = if (isBrightColor(color)) flags or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR else flags and View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR.inv()
-            view.systemUiVisibility = flags
+            if (floatingKeyboardManager?.isFloating == true) {
+                window.navigationBarColor = Color.TRANSPARENT
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    window.isNavigationBarContrastEnforced = false
+                }
+                return
+            }
+            val settingsValues = settings.current
+            if (!settingsValues.mCustomNavBarColor) {
+                clearNavigationBarColor()
+                return
+            }
+            
+            window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION)
+            window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
+            val color = settingsValues.mColors.get(ColorType.NAVIGATION_BAR)
+            window.navigationBarColor = color
+            
+            val controller = WindowCompat.getInsetsController(window, decorView)
+            if (controller != null) {
+                controller.isAppearanceLightNavigationBars = isBrightColor(color)
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                var flags = decorView.systemUiVisibility
+                flags = if (isBrightColor(color)) flags or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR else flags and View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR.inv()
+                decorView.systemUiVisibility = flags
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to set navigation bar color", e)
         }
     }
 
@@ -1681,16 +1699,21 @@ class LatinIME : InputMethodService(),
     private fun clearNavigationBarColor() {
         if (!originalNavBarSaved) return
         val window = window?.window ?: return
-        window.navigationBarColor = originalNavBarColor
-        
-        val view = window.decorView
-        val controller = WindowCompat.getInsetsController(window, view)
-        if (controller != null) {
-            controller.isAppearanceLightNavigationBars = (originalNavBarFlags and View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR) != 0
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            view.systemUiVisibility = originalNavBarFlags
+        val decorView = window.decorView
+        if (!decorView.isAttachedToWindow) return
+        try {
+            window.navigationBarColor = originalNavBarColor
+            
+            val controller = WindowCompat.getInsetsController(window, decorView)
+            if (controller != null) {
+                controller.isAppearanceLightNavigationBars = (originalNavBarFlags and View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR) != 0
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                decorView.systemUiVisibility = originalNavBarFlags
+            }
+            originalNavBarSaved = false
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to clear navigation bar color", e)
         }
-        originalNavBarSaved = false
     }
 
     private fun workaroundForHuaweiStatusBarIssue() {

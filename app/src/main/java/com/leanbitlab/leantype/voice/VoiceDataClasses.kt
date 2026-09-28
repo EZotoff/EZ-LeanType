@@ -57,6 +57,8 @@ object VoiceConstants {
 
     const val ENGINE_VOSK = "vosk"
     const val ENGINE_WHISPER = "whisper"
+    const val ENGINE_PARAKEET = "parakeet"
+    const val ENGINE_GIGAAM = "gigaam"
 
     const val MODE_FAST = "FAST"
     const val MODE_ACCURATE = "ACCURATE"
@@ -97,6 +99,11 @@ object VoiceConstants {
     const val PREF_VOICE_CUSTOM_PROMPT = "voice_custom_prompt"
     const val PREF_VOICE_MIC_SENSITIVITY = "voice_mic_sensitivity"
     const val PREF_VOICE_MAX_DURATION_SECONDS = "voice_max_duration_seconds"
+    const val PREF_OFFLINE_ENGINE = "voice_offline_engine"
+    const val OFFLINE_ENGINE_AUTO = "auto"
+    const val OFFLINE_ENGINE_WHISPER = "whisper"
+    const val OFFLINE_ENGINE_PARAKEET = "parakeet"
+    const val OFFLINE_ENGINE_GIGAAM = "gigaam"
     const val PREF_USE_DEBUG_VOICE_STUB = "use_debug_voice_stub"
     const val VOICE_PLUGIN_PACKAGE = "com.leanbitlab.leantype.voice.offline"
 }

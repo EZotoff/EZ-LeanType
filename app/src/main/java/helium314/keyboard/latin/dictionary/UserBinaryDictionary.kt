@@ -17,6 +17,7 @@ import com.android.inputmethod.latin.BinaryDictionary
 import helium314.keyboard.latin.NgramContext
 import helium314.keyboard.latin.utils.Log
 import helium314.keyboard.latin.utils.SubtypeLocaleUtils
+import helium314.keyboard.latin.utils.UserDictionaryUtils
 import java.io.File
 import java.util.Arrays
 import java.util.Locale
@@ -54,6 +55,7 @@ class UserBinaryDictionary protected constructor(
 
         val observer = object : ContentObserver(null) {
             override fun onChange(self: Boolean, uri: Uri?) {
+                UserDictionaryUtils.migrateMisattributedCyrillicWords(context.contentResolver)
                 setNeedsToRecreate()
             }
         }
@@ -111,6 +113,7 @@ class UserBinaryDictionary protected constructor(
     }
 
     override fun loadInitialContentsLocked() {
+        UserDictionaryUtils.migrateMisattributedCyrillicWords(mContext.contentResolver)
         val localeElements = if (TextUtils.isEmpty(mLocaleString)) {
             emptyArray()
         } else {
@@ -178,6 +181,11 @@ class UserBinaryDictionary protected constructor(
                 val frequency = cursor.getInt(indexFrequency)
                 val adjustedFrequency = scaleFrequencyFromDefaultToLatinIme(frequency)
                 if (word != null && word.length <= MAX_WORD_LENGTH) {
+                    val isCyrillic = UserDictionaryUtils.isCyrillicWord(word)
+                    if (!mLocaleString.startsWith("ru") && isCyrillic) {
+                        cursor.moveToNext()
+                        continue
+                    }
                     runGCIfRequiredLocked(true)
                     addUnigramLocked(
                         word, adjustedFrequency, null,

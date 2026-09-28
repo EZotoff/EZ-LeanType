@@ -120,8 +120,23 @@ fun Context.getDisplayContext(): Context {
 
 /** Override layout parameters to expand SoftInputWindow to the entire screen, See setInputView and SoftInputWindow.updateWidthHeight */
 fun InputMethodService.updateSoftInputWindowLayoutParameters(inputView: View?) {
-    val window = window.window ?: return
-    ViewLayoutUtils.updateLayoutHeightOf(window, ViewGroup.LayoutParams.MATCH_PARENT)
+    val window = window?.window ?: return
+    val decor = window.decorView
+    if (decor.isAttachedToWindow) {
+        ViewLayoutUtils.updateLayoutHeightOf(window, ViewGroup.LayoutParams.MATCH_PARENT)
+    } else {
+        decor.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+            override fun onViewAttachedToWindow(v: View) {
+                decor.removeOnAttachStateChangeListener(this)
+                try {
+                    ViewLayoutUtils.updateLayoutHeightOf(window, ViewGroup.LayoutParams.MATCH_PARENT)
+                } catch (e: Exception) {
+                    Log.w("Ktx", "Failed to update layout height on attach", e)
+                }
+            }
+            override fun onViewDetachedFromWindow(v: View) {}
+        })
+    }
 
     if (inputView == null) return
     // In non-fullscreen mode, InputView and its parent inputArea should expand to the entire screen

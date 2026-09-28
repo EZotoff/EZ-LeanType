@@ -86,3 +86,19 @@ docs/superpowers/
 
 # Temporary generated files
 docs/releasenote/release_notes_temp.md
+
+# Build outputs & APKs
+*.apk
+*.zip
+*.bin
+*.onnx
+!app/src/main/assets/silero_vad.onnx
+build-outputs/
+apks/
+attachments/
+app/APKS_LOCATION.txt
+run_daemon_server*.py
+serve_apks.py
+voice-plugin-src/
+/silero_vad.onnx
+

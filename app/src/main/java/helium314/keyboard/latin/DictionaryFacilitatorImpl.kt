@@ -35,8 +35,11 @@ import helium314.keyboard.latin.personalization.UserHistoryDictionary
 import helium314.keyboard.latin.settings.Settings
 import helium314.keyboard.latin.settings.SettingsValuesForSuggestion
 import helium314.keyboard.latin.utils.Log
+import helium314.keyboard.latin.utils.ScriptUtils
+import helium314.keyboard.latin.utils.ScriptUtils.script
 import helium314.keyboard.latin.utils.SubtypeSettings
 import helium314.keyboard.latin.utils.SuggestionResults
+import helium314.keyboard.latin.utils.UserDictionaryUtils
 import helium314.keyboard.latin.utils.getSecondaryLocales
 import helium314.keyboard.latin.utils.locale
 import helium314.keyboard.latin.utils.prefs
@@ -196,6 +199,7 @@ class DictionaryFacilitatorImpl : DictionaryFacilitator {
         if (sessionWordBoost == null) {
             sessionWordBoost = SessionWordBoost.getInstance(context)
         }
+        UserDictionaryUtils.migrateMisattributedCyrillicWords(context.contentResolver)
 
         val locales = getUsedLocales(newLocale, context)
 
@@ -208,7 +212,7 @@ class DictionaryFacilitatorImpl : DictionaryFacilitator {
         val (newDictionaryGroups, existingDictsToCleanup) =
             getNewDictGroupsAndDictsToCleanup(locales, subDictTypesToUse, forceReloadMainDictionary, dictNamePrefix, context)
 
-        mLoadedSuggestEmojis = Settings.getValues().mSuggestEmojis
+        mLoadedSuggestEmojis = try { Settings.getValues().mSuggestEmojis } catch (_: Throwable) { false }
         mLoadedEmojiDictExists = locales.any { helium314.keyboard.latin.utils.DictionaryInfoUtils.getCachedDictForLocaleAndType(it, Dictionary.TYPE_EMOJI, context) != null }
 
         // Replace Dictionaries.
@@ -263,7 +267,7 @@ class DictionaryFacilitatorImpl : DictionaryFacilitator {
 
             // create new or re-use already loaded main dict
             val mainDict: Dictionary?
-            val currentSuggestEmojis = Settings.getValues().mSuggestEmojis
+            val currentSuggestEmojis = try { Settings.getValues().mSuggestEmojis } catch (_: Throwable) { false }
             val currentEmojiDictExists = helium314.keyboard.latin.utils.DictionaryInfoUtils.getCachedDictForLocaleAndType(locale, Dictionary.TYPE_EMOJI, context) != null
             val forceReloadMain = forceReload || (currentSuggestEmojis != mLoadedSuggestEmojis) || (currentEmojiDictExists != mLoadedEmojiDictExists)
 
@@ -306,7 +310,7 @@ class DictionaryFacilitatorImpl : DictionaryFacilitator {
         pendingMainDictionaryLoad.set(true)
         scope.launch {
             try {
-                val useEmojiDict = Settings.getValues().mSuggestEmojis
+                val useEmojiDict = try { Settings.getValues().mSuggestEmojis } catch (_: Throwable) { false }
                 mLoadedSuggestEmojis = useEmojiDict
                 mLoadedEmojiDictExists = locales.any { helium314.keyboard.latin.utils.DictionaryInfoUtils.getCachedDictForLocaleAndType(it, Dictionary.TYPE_EMOJI, context) != null }
                 val dictGroupsWithNewMainDict = locales.mapNotNull {
@@ -405,12 +409,25 @@ class DictionaryFacilitatorImpl : DictionaryFacilitator {
 
         // Add word to user dictionary if it is in no other dictionary except user history dictionary (i.e. typed again).
         val sv = Settings.getValues()
-        if (sv.mAddToPersonalDictionary // require the opt-in
-            && dictionaryGroups[0].hasDict(Dictionary.TYPE_USER)
-            && words.size == 1 // only single words
-        ) {
+        if (sv.mAddToPersonalDictionary && words.size == 1) {
             addToPersonalDictionaryIfInvalidButInHistory(suggestion, wasAutoCapitalized)
         }
+    }
+
+    private fun getDictionaryGroupForWord(word: String): DictionaryGroup {
+        val firstCp = if (word.isNotEmpty()) word.codePointAt(0) else 0
+        if (ScriptUtils.isLetterPartOfScript(firstCp, ScriptUtils.SCRIPT_CYRILLIC)) {
+            val cyrillicGroup = dictionaryGroups.firstOrNull {
+                it.locale.language == "ru" || it.locale.script() == ScriptUtils.SCRIPT_CYRILLIC
+            }
+            if (cyrillicGroup != null) return cyrillicGroup
+        } else if (ScriptUtils.isLetterPartOfScript(firstCp, ScriptUtils.SCRIPT_LATIN)) {
+            val latinGroup = dictionaryGroups.firstOrNull {
+                it.locale.script() == ScriptUtils.SCRIPT_LATIN || it.locale.language in listOf("en", "de", "fr", "es", "it", "pt")
+            }
+            if (latinGroup != null) return latinGroup
+        }
+        return currentlyPreferredDictionaryGroup
     }
 
     private fun addWordToUserHistory(
@@ -479,7 +496,7 @@ class DictionaryFacilitatorImpl : DictionaryFacilitator {
 
     private fun addToPersonalDictionaryIfInvalidButInHistory(word: String, wasAutoCapitalized: Boolean) {
         if (word.length <= 1 || isMalformedWord(word)) return
-        val dictionaryGroup = currentlyPreferredDictionaryGroup
+        val dictionaryGroup = getDictionaryGroupForWord(word)
         val userDict = dictionaryGroup.getSubDict(Dictionary.TYPE_USER) ?: return
 
         val wordToUse = if (wasAutoCapitalized) {
@@ -501,13 +518,20 @@ class DictionaryFacilitatorImpl : DictionaryFacilitator {
             return // already in personal dict
 
         val threshold = Settings.getValues().mAddToPersonalDictThreshold
-        val count = sessionWordBoost?.getCount(wordToUse) ?: 1
+        val boost = sessionWordBoost ?: mContext?.let { SessionWordBoost.getInstance(it).also { b -> sessionWordBoost = b } }
+        val count = boost?.getCount(wordToUse) ?: 1
         val canAdd = count >= threshold
 
         if (canAdd) {
             scope.launch {
                 runCatching {
-                    val localeToUse = if (dictionaryGroup.locale.language.isNullOrEmpty()) null else dictionaryGroup.locale
+                    val localeToUse = if (dictionaryGroup.locale.language.isNullOrEmpty()) {
+                        null
+                    } else if (dictionaryGroup.locale.language == "ru") {
+                        Locale("ru")
+                    } else {
+                        dictionaryGroup.locale
+                    }
                     UserDictionary.Words.addWord(userDict.mContext, wordToUse, 250, null, localeToUse)
                     userDict.addUnigramEntry(wordToUse, 250, null, 0, false, false, (System.currentTimeMillis() / 1000).toInt())
                     Log.i(TAG, "Added word '$wordToUse' to personal dictionary for locale $localeToUse (typed $count times, threshold $threshold)")

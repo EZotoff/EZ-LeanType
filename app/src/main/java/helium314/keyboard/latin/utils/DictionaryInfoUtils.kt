@@ -144,7 +144,9 @@ object DictionaryInfoUtils {
         val exactDir = getCacheDirectoryForLocale(locale, context)?.let { File(it) }
         val exactFiles = exactDir?.listFiles() ?: emptyArray()
 
-        if (hasMainOrUserDict(exactFiles)) {
+        val hasExactMainAndUser = exactFiles.any { it.name == MAIN_DICT_FILE_NAME || it.name.startsWith(MAIN_DICT_PREFIX) } &&
+                exactFiles.any { it.name.endsWith(USER_DICTIONARY_SUFFIX) }
+        if (hasExactMainAndUser) {
             return exactFiles
         }
 

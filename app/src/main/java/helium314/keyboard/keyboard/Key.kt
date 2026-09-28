@@ -788,7 +788,7 @@ open class Key : Comparable<Key> {
             if ((mLabelFlags and LABEL_FLAGS_DISABLE_HINT_LABEL) != 0) {
                 mHintLabel = null
             } else {
-                val hintLabel = helium314.keyboard.latin.utils.getHintLabel(popupSet, params, keySpec)
+                val hintLabel = helium314.keyboard.latin.utils.getHintLabel(popupSet, params, label ?: keySpec)
                 mHintLabel = if (needsToUpcase) StringUtils.toTitleCaseOfKeyLabel(hintLabel, localeForUpcasing) else hintLabel
             }
 
@@ -826,8 +826,7 @@ open class Key : Comparable<Key> {
             }
             mCode = resolvedCode
 
-            if (mCode == Constants.CODE_SPACE ||
-                mCode == KeyCode.LANGUAGE_SWITCH ||
+            if (mCode == KeyCode.LANGUAGE_SWITCH ||
                 mCode == KeyCode.CLEAR_HANDWRITING ||
                 (mCode == KeyCode.SYMBOL_ALPHA && !params.mId.isAlphabetKeyboard)
             ) {

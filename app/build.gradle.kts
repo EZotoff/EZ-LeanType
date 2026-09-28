@@ -84,7 +84,6 @@ android {
             // and for better performance in case users want to install a debug APK
             isMinifyEnabled = false
             isJniDebuggable = false
-            applicationIdSuffix = ".debug"
         }
         create("runTests") { // build variant for running tests on CI that skips tests known to fail
             isMinifyEnabled = false
@@ -95,7 +94,6 @@ android {
             isMinifyEnabled = false
             isJniDebuggable = false
             signingConfig = signingConfigs.getByName("debug")
-            applicationIdSuffix = ".debug"
         }
         // base.archivesBaseName = "HeliboardL_" + defaultConfig.versionName // replaced by dynamic naming below
         applicationVariants.all {
@@ -123,11 +121,11 @@ android {
                 variant.proguardFiles.add(project.layout.buildDirectory.file(getDefaultProguardFile("proguard-android.txt").absolutePath))
                 variant.proguardFiles.add(project.layout.buildDirectory.file(project.buildFile.parent + "/proguard-rules.pro"))
             }
-            // Exclude all dictionary assets across all flavors (all downloaded on-demand)
+            // Exclude non-core dictionary assets to keep APK size optimal, while keeping core built-in dictionaries (Russian and English) bundled
             val dictsDir = project.file("src/main/assets/dicts")
             if (dictsDir.exists() && dictsDir.isDirectory) {
                 dictsDir.listFiles()?.forEach { file ->
-                    if (file.name.endsWith(".dict")) {
+                    if (file.name.endsWith(".dict") && file.name != "main_ru.dict" && file.name != "main_en-US.dict" && file.name != "main_en-GB.dict") {
                         patterns.add(file.name)
                     }
                 }
@@ -145,17 +143,20 @@ android {
         aidl = true
     }
 
-    externalNativeBuild {
-        ndkBuild {
-            path = File("src/main/jni/Android.mk")
+    if (project.findProperty("buildNative") == "true") {
+        externalNativeBuild {
+            ndkBuild {
+                path = File("src/main/jni/Android.mk")
+            }
         }
+        ndkVersion = "28.0.13004108"
     }
-    ndkVersion = "28.0.13004108"
 
     packaging {
         jniLibs {
             // false is required for Android 16+ 16-KB page alignment compatibility on prebuilts.
             useLegacyPackaging = false
+            keepDebugSymbols += "**/*.so"
         }
         resources {
             excludes += "assets/dexopt/baseline.prof"
@@ -244,6 +245,9 @@ dependencies {
     implementation("androidx.camera:camera-camera2:$cameraxVersion")
     implementation("androidx.camera:camera-lifecycle:$cameraxVersion")
     implementation("androidx.camera:camera-view:$cameraxVersion")
+
+    // Offline Voice Engine (Sherpa-ONNX with Parakeet TDT & Whisper)
+    implementation(files("libs/sherpa-onnx.aar"))
 
     // WorkManager — required by plugins loaded via DexClassLoader.
     // ML Kit internally calls WorkManager.getInstance(context) using the host app context,

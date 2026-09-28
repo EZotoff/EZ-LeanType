@@ -54,62 +54,52 @@ class ReadOnlyBinaryDictionary(
         weightForLocale: Float,
         inOutWeightOfLangModelVsSpatialModel: FloatArray?
     ): ArrayList<SuggestedWordInfo>? {
-        if (mLock.readLock().tryLock()) {
-            try {
-                return mBinaryDictionary.getSuggestions(
-                    composedData, ngramContext, proximityInfoHandle,
-                    settingsValuesForSuggestion, sessionId, weightForLocale,
-                    inOutWeightOfLangModelVsSpatialModel
-                )
-            } finally {
-                mLock.readLock().unlock()
-            }
+        mLock.readLock().lock()
+        try {
+            return mBinaryDictionary.getSuggestions(
+                composedData, ngramContext, proximityInfoHandle,
+                settingsValuesForSuggestion, sessionId, weightForLocale,
+                inOutWeightOfLangModelVsSpatialModel
+            )
+        } finally {
+            mLock.readLock().unlock()
         }
-        return null
     }
 
     override fun isInDictionary(word: String): Boolean {
-        if (mLock.readLock().tryLock()) {
-            try {
-                return mBinaryDictionary.isInDictionary(word)
-            } finally {
-                mLock.readLock().unlock()
-            }
+        mLock.readLock().lock()
+        try {
+            return mBinaryDictionary.isInDictionary(word)
+        } finally {
+            mLock.readLock().unlock()
         }
-        return false
     }
 
     override fun shouldAutoCommit(candidate: SuggestedWordInfo): Boolean {
-        if (mLock.readLock().tryLock()) {
-            try {
-                return mBinaryDictionary.shouldAutoCommit(candidate)
-            } finally {
-                mLock.readLock().unlock()
-            }
+        mLock.readLock().lock()
+        try {
+            return mBinaryDictionary.shouldAutoCommit(candidate)
+        } finally {
+            mLock.readLock().unlock()
         }
-        return false
     }
 
     override fun getFrequency(word: String): Int {
-        if (mLock.readLock().tryLock()) {
-            try {
-                return mBinaryDictionary.getFrequency(word)
-            } finally {
-                mLock.readLock().unlock()
-            }
+        mLock.readLock().lock()
+        try {
+            return mBinaryDictionary.getFrequency(word)
+        } finally {
+            mLock.readLock().unlock()
         }
-        return NOT_A_PROBABILITY
     }
 
     override fun getMaxFrequencyOfExactMatches(word: String): Int {
-        if (mLock.readLock().tryLock()) {
-            try {
-                return mBinaryDictionary.getMaxFrequencyOfExactMatches(word)
-            } finally {
-                mLock.readLock().unlock()
-            }
+        mLock.readLock().lock()
+        try {
+            return mBinaryDictionary.getMaxFrequencyOfExactMatches(word)
+        } finally {
+            mLock.readLock().unlock()
         }
-        return NOT_A_PROBABILITY
     }
 
     override fun getAllWordsWithFrequency(): Map<String, Int> {
@@ -199,14 +189,12 @@ class ReadOnlyBinaryDictionary(
     }
 
     override fun getWordProperty(word: String, isBeginningOfSentence: Boolean): WordProperty? {
-        if (mLock.readLock().tryLock()) {
-            try {
-                return mBinaryDictionary.getWordProperty(word, isBeginningOfSentence)
-            } finally {
-                mLock.readLock().unlock()
-            }
+        mLock.readLock().lock()
+        try {
+            return mBinaryDictionary.getWordProperty(word, isBeginningOfSentence)
+        } finally {
+            mLock.readLock().unlock()
         }
-        return null
     }
 
     override fun close() {

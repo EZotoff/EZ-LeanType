@@ -20,42 +20,54 @@ class DictionaryFacilitatorLruCache(
     private val mDictionaryNamePrefix: String
 ) {
     private val mLock = Any()
-    private val mDictionaryFacilitator: DictionaryFacilitator =
-        DictionaryFacilitatorProvider.getDictionaryFacilitator(true /* isNeededForSpellChecking */)
+    private val mFacilitatorMap = LinkedHashMap<String, Pair<Locale, DictionaryFacilitator>>()
     private var mUseAppsDictionary = false
-    private var mLocale: Locale? = null
-
-    private fun resetDictionariesForLocaleLocked() {
-        val locale = mLocale ?: return
-        mDictionaryFacilitator.resetDictionaries(
-            mContext, locale, mUseAppsDictionary,
-            false, false, mDictionaryNamePrefix, null
-        )
-    }
 
     fun setUseAppsDictionary(useAppsDictionary: Boolean) {
         synchronized(mLock) {
             if (mUseAppsDictionary == useAppsDictionary) return
             mUseAppsDictionary = useAppsDictionary
-            resetDictionariesForLocaleLocked()
-            waitForLoadingMainDictionary(mDictionaryFacilitator)
+            mFacilitatorMap.values.forEach { (loc, fac) ->
+                fac.resetDictionaries(
+                    mContext, loc, mUseAppsDictionary,
+                    false, false, mDictionaryNamePrefix, null
+                )
+                waitForLoadingMainDictionary(fac)
+            }
         }
     }
 
     fun get(locale: Locale): DictionaryFacilitator {
+        val key = locale.language
+        val facilitator: DictionaryFacilitator
         synchronized(mLock) {
-            if (!mDictionaryFacilitator.isForLocale(locale)) {
-                mLocale = locale
-                resetDictionariesForLocaleLocked()
+            val existing = mFacilitatorMap[key]
+            if (existing != null) {
+                mFacilitatorMap.remove(key)
+                mFacilitatorMap[key] = existing
+                facilitator = existing.second
+            } else {
+                if (mFacilitatorMap.size >= 4) {
+                    val oldestKey = mFacilitatorMap.keys.first()
+                    mFacilitatorMap.remove(oldestKey)?.second?.closeDictionaries()
+                }
+                val newFac = DictionaryFacilitatorProvider.getDictionaryFacilitator(true)
+                newFac.resetDictionaries(
+                    mContext, locale, mUseAppsDictionary,
+                    false, false, mDictionaryNamePrefix, null
+                )
+                mFacilitatorMap[key] = locale to newFac
+                facilitator = newFac
             }
-            waitForLoadingMainDictionary(mDictionaryFacilitator)
-            return mDictionaryFacilitator
         }
+        waitForLoadingMainDictionary(facilitator)
+        return facilitator
     }
 
     fun closeDictionaries() {
         synchronized(mLock) {
-            mDictionaryFacilitator.closeDictionaries()
+            mFacilitatorMap.values.forEach { (_, fac) -> fac.closeDictionaries() }
+            mFacilitatorMap.clear()
         }
     }
 

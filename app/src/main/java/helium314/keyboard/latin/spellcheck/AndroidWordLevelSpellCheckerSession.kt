@@ -30,6 +30,7 @@ import helium314.keyboard.latin.utils.ScriptUtils.script
 import helium314.keyboard.latin.utils.StatsUtils
 import helium314.keyboard.latin.utils.SubtypeSettings
 import helium314.keyboard.latin.utils.SuggestionResults
+import helium314.keyboard.latin.utils.locale
 import helium314.keyboard.latin.utils.prefs
 import java.util.Locale
 import java.util.TreeMap
@@ -61,31 +62,44 @@ abstract class AndroidWordLevelSpellCheckerSession(
         }
     }
 
+    protected var mCurrentWordLocale: String? = null
+
     override fun onCreate() {
         updateLocale()
     }
 
     override fun getLocale(): String? {
+        val wordLocale = mCurrentWordLocale
+        if (!wordLocale.isNullOrEmpty()) {
+            return wordLocale
+        }
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
             val imm = mService.applicationContext.getSystemService(InputMethodManager::class.java)
             if (imm != null) {
                 val currentInputMethodSubtype = imm.currentInputMethodSubtype
                 if (currentInputMethodSubtype != null) {
-                    val localeString = currentInputMethodSubtype.locale
-                    if (!localeString.isNullOrEmpty()) {
-                        return localeString
-                    }
-                    if ("dummy" == currentInputMethodSubtype.extraValue) {
-                        val prefs = mService.prefs()
-                        return SubtypeSettings.getSelectedSubtype(prefs).locale
+                    val locale = currentInputMethodSubtype.locale().toString()
+                    if (locale.isNotEmpty()) {
+                        return locale
                     }
                 }
             }
         }
-        return super.getLocale()
+        val prefs = mService.prefs()
+        val selectedSubtype = SubtypeSettings.getSelectedSubtype(prefs)
+        val selectedLocale = selectedSubtype.locale().toString()
+        if (selectedLocale.isNotEmpty()) {
+            return selectedLocale
+        }
+        val sessionLocale = super.getLocale()
+        if (!sessionLocale.isNullOrEmpty()) {
+            return sessionLocale
+        }
+        return null
     }
 
     override fun onClose() {
+        mCurrentWordLocale = null
         mService.contentResolver.unregisterContentObserver(mObserver)
     }
 
@@ -130,7 +144,20 @@ abstract class AndroidWordLevelSpellCheckerSession(
                 .replace(Regex("^$quotesRegexp"), "")
                 .replace(Regex("$quotesRegexp$"), "")
 
-            val localeRegex = scriptToPunctuationRegexMap[locale.script()]
+            val firstCodePoint = if (text.isNotEmpty()) text.codePointAt(0) else 0
+            val isCyrillicWord = firstCodePoint != 0 && ScriptUtils.isLetterPartOfScript(firstCodePoint, ScriptUtils.SCRIPT_CYRILLIC)
+            val isLatinWord = firstCodePoint != 0 && ScriptUtils.isLetterPartOfScript(firstCodePoint, ScriptUtils.SCRIPT_LATIN)
+            val effectiveLocale = if (isCyrillicWord && locale.language != "ru") {
+                Locale("ru")
+            } else if (isLatinWord && locale.language == "ru") {
+                Locale.ENGLISH
+            } else {
+                locale
+            }
+            mCurrentWordLocale = effectiveLocale.toString()
+            val effectiveScript = effectiveLocale.script()
+
+            val localeRegex = scriptToPunctuationRegexMap[effectiveScript]
             if (localeRegex != null) {
                 text = text.replace(Regex(localeRegex), "")
             }
@@ -140,18 +167,20 @@ abstract class AndroidWordLevelSpellCheckerSession(
                 return SuggestionsInfo(cachedSuggestionsParams.mFlags, cachedSuggestionsParams.mSuggestions)
             }
 
-            if (!mService.hasMainDictionaryForLocale(locale)) {
+            if (!mService.hasMainDictionaryForLocale(effectiveLocale)) {
                 return AndroidSpellCheckerService.getNotInDictEmptySuggestions(false)
             }
 
-            val checkability = getCheckabilityInScript(text, mScript)
+            val checkability = getCheckabilityInScript(text, effectiveScript)
+            val capitalizeType = StringUtils.getCapitalizationType(text)
+
             if (CHECKABILITY_CHECKABLE != checkability) {
                 val periodOnlyAtLastIndex = text.indexOf(Constants.CODE_PERIOD.toChar()) == (text.length - 1)
                 if (CHECKABILITY_CONTAINS_PERIOD == checkability) {
                     val splitText = text.split(Regex(Constants.REGEXP_PERIOD))
                     var allWordsAreValid = true
                     for (word in splitText) {
-                        if (word.isNotEmpty() && !mService.isValidWord(locale, word) && !mService.isValidWord(locale, word.lowercase(locale))) {
+                        if (word.isNotEmpty() && !mService.isValidWord(effectiveLocale, word) && !mService.isValidWord(effectiveLocale, word.lowercase(effectiveLocale))) {
                             allWordsAreValid = false
                             break
                         }
@@ -163,37 +192,54 @@ abstract class AndroidWordLevelSpellCheckerSession(
                         )
                     }
                 }
-                return if (mService.isValidWord(locale, text))
-                    AndroidSpellCheckerService.getInDictEmptySuggestions()
-                else
-                    AndroidSpellCheckerService.getNotInDictEmptySuggestions(!periodOnlyAtLastIndex)
+
+                if (isInDictForAnyCapitalization(text, capitalizeType, effectiveLocale)) {
+                    return AndroidSpellCheckerService.getInDictEmptySuggestions()
+                }
+
+                // If first letter is uncheckable in effective script, check cross-script fallbacks
+                if (firstCodePoint != 0 && checkability == CHECKABILITY_FIRST_LETTER_UNCHECKABLE) {
+                    if (isCyrillicWord) {
+                        if (isInDictForAnyCapitalization(text, capitalizeType, Locale("ru"))) {
+                            return AndroidSpellCheckerService.getInDictEmptySuggestions()
+                        }
+                    } else if (isLatinWord) {
+                        if (isInDictForAnyCapitalization(text, capitalizeType, Locale.ENGLISH)) {
+                            return AndroidSpellCheckerService.getInDictEmptySuggestions()
+                        }
+                    }
+                }
+
+                // Never report uncheckable words (too short, foreign scripts, emails, URLs) as typos.
+                val reportAsTypo = (checkability == CHECKABILITY_CONTAINS_PERIOD) && !periodOnlyAtLastIndex
+                return AndroidSpellCheckerService.getNotInDictEmptySuggestions(reportAsTypo)
             }
 
-            val capitalizeType = StringUtils.getCapitalizationType(text)
-            if (isInDictForAnyCapitalization(text, capitalizeType, locale)) {
+            if (isInDictForAnyCapitalization(text, capitalizeType, effectiveLocale)) {
                 if (DebugFlags.DEBUG_ENABLED) Log.i(TAG, "onGetSuggestionsInternal() : [$text] is a valid word")
                 return AndroidSpellCheckerService.getInDictEmptySuggestions()
             }
             if (DebugFlags.DEBUG_ENABLED) Log.i(TAG, "onGetSuggestionsInternal() : [$text] is NOT a valid word")
 
-            val keyboard = mService.getKeyboardForLocale(locale)
+            val keyboard = mService.getKeyboardForLocale(effectiveLocale)
             val composer = WordComposer()
-            if (locale.language == "ko") composer.restartCombining("hangul")
+            if (effectiveLocale.language == "ko") composer.restartCombining("hangul")
             val codePoints = StringUtils.toCodePointArray(text)
             val coordinates = keyboard.getCoordinates(codePoints)
             composer.setComposingWord(codePoints, coordinates)
 
-            val suggestionResults = mService.getSuggestionResults(locale, composer.getComposedDataSnapshot(), ngramContext ?: NgramContext.EMPTY_PREV_WORDS_INFO, keyboard)
-                ?: return AndroidSpellCheckerService.getNotInDictEmptySuggestions(false)
+            val suggestionResults = mService.getSuggestionResults(effectiveLocale, composer.getComposedDataSnapshot(), ngramContext ?: NgramContext.EMPTY_PREV_WORDS_INFO, keyboard)
+                ?: return AndroidSpellCheckerService.getNotInDictEmptySuggestions(true)
 
-            val result = getResult(capitalizeType, locale, suggestionsLimit, mService.recommendedThreshold, text, suggestionResults)
+            val result = getResult(capitalizeType, effectiveLocale, suggestionsLimit, mService.recommendedThreshold, text, suggestionResults)
 
             if (DebugFlags.DEBUG_ENABLED && result.mSuggestions != null && result.mSuggestions.isNotEmpty()) {
                 Log.i(TAG, "onGetSuggestionsInternal() : Suggestions = ${result.mSuggestions.joinToString { " [$it]" }}")
             }
 
             StatsUtils.onInvalidWordIdentification(text)
-            val flags = SuggestionsInfo.RESULT_ATTR_LOOKS_LIKE_TYPO or (if (result.mHasRecommendedSuggestions) SuggestionsInfo.RESULT_ATTR_HAS_RECOMMENDED_SUGGESTIONS else 0)
+            val flags = SuggestionsInfo.RESULT_ATTR_LOOKS_LIKE_TYPO or
+                    (if (result.mHasRecommendedSuggestions) SuggestionsInfo.RESULT_ATTR_HAS_RECOMMENDED_SUGGESTIONS else 0)
             val retval = SuggestionsInfo(flags, result.mSuggestions)
             mSuggestionsCache.putSuggestionsToCache(text, result.mSuggestions, flags)
             return retval
