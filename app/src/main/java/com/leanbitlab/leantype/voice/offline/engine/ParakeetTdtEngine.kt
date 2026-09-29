@@ -242,11 +242,11 @@ class ParakeetTdtEngine {
                 VadModelConfig().apply {
                     sileroVadModelConfig = SileroVadModelConfig(
                         model = path,
-                        threshold = 0.35f,
-                        minSilenceDuration = 0.35f,
-                        minSpeechDuration = 0.15f,
+                        threshold = 0.5f,
+                        minSilenceDuration = 0.5f,
+                        minSpeechDuration = 0.25f,
                         windowSize = 512,
-                        maxSpeechDuration = 8.0f
+                        maxSpeechDuration = 20.0f
                     )
                     sampleRate = 16000
                     numThreads = 1
@@ -350,8 +350,8 @@ class ParakeetTdtEngine {
                             }
                         }
 
-                        // Periodic partial decoding during ongoing speech
-                        if (speechStarted && (buffer.size - lastPartialSampleCount >= 4800) && !session.cancelled.get()) {
+                        // Periodic partial decoding during ongoing speech (every 400ms = 6400 samples)
+                        if (speechStarted && (buffer.size - lastPartialSampleCount >= 6400) && !session.cancelled.get()) {
                             lastPartialSampleCount = buffer.size
                             if (isPartialDecoding.compareAndSet(false, true)) {
                                 val snapshot = buffer.toFloatArray()
@@ -380,23 +380,22 @@ class ParakeetTdtEngine {
                             vad.pop()
 
                             if (segSamples.isNotEmpty()) {
-                                currentSegmentId.incrementAndGet()
-                                val committedText = decodeWaveform(currentRecognizer, segSamples)
-                                val textToEmit = if (committedText.isNotEmpty()) committedText else lastEmittedPartial
-                                if (textToEmit.isNotEmpty() && !session.cancelled.get()) {
-                                    Log.i(TAG, "Segment committed via VAD (${segSamples.size} samples): '$textToEmit'")
-                                    callback.onFinal(textToEmit)
+                                val targetSegId = currentSegmentId.incrementAndGet()
+                                val fallback = lastEmittedPartial
+                                decoderExecutor.execute {
+                                    if (session.running.get() && !session.cancelled.get()) {
+                                        val committedText = decodeWaveform(currentRecognizer, segSamples)
+                                        val textToEmit = if (committedText.isNotEmpty()) committedText else fallback
+                                        if (textToEmit.isNotEmpty() && !session.cancelled.get()) {
+                                            Log.i(TAG, "Segment committed via VAD (${segSamples.size} samples): '$textToEmit'")
+                                            callback.onFinal(textToEmit)
+                                        }
+                                    }
                                 }
                             }
 
-                            // Keep any unconsumed remainder beyond vadOffset so speech is never lost
-                            if (buffer.size > vadOffset) {
-                                buffer.removeFirst(vadOffset)
-                                vadOffset = 0
-                            } else {
-                                buffer.clear()
-                                vadOffset = 0
-                            }
+                            buffer.clear()
+                            vadOffset = 0
                             speechStarted = false
                             lastPartialSampleCount = 0
                             lastEmittedPartial = ""
@@ -475,35 +474,57 @@ class ParakeetTdtEngine {
                             vad.pop()
                             if (segSamples.isNotEmpty()) {
                                 flushedCount++
-                                currentSegmentId.incrementAndGet()
-                                val committedText = decodeWaveform(currentRecognizer, segSamples)
-                                val textToEmit = if (committedText.isNotEmpty()) committedText else lastEmittedPartial
-                                if (textToEmit.isNotEmpty() && !session.cancelled.get()) {
-                                    Log.i(TAG, "Final flush segment committed via VAD: '$textToEmit'")
-                                    callback.onFinal(textToEmit)
+                                val targetSegId = currentSegmentId.incrementAndGet()
+                                val fallback = lastEmittedPartial
+                                decoderExecutor.execute {
+                                    if (session.running.get() && !session.cancelled.get()) {
+                                        val committedText = decodeWaveform(currentRecognizer, segSamples)
+                                        val textToEmit = if (committedText.isNotEmpty()) committedText else fallback
+                                        if (textToEmit.isNotEmpty() && !session.cancelled.get()) {
+                                            Log.i(TAG, "Final flush segment committed via VAD: '$textToEmit'")
+                                            callback.onFinal(textToEmit)
+                                        }
+                                    }
                                 }
                             }
                         }
                         if (flushedCount == 0 && speechStarted && buffer.size > 0 && !session.cancelled.get()) {
                             val remainingSamples = buffer.toFloatArray()
-                            currentSegmentId.incrementAndGet()
-                            val committedText = decodeWaveform(currentRecognizer, remainingSamples)
-                            val textToEmit = if (committedText.isNotEmpty()) committedText else lastEmittedPartial
-                            if (textToEmit.isNotEmpty() && !session.cancelled.get()) {
-                                Log.i(TAG, "Final lingering segment committed: '$textToEmit'")
-                                callback.onFinal(textToEmit)
+                            val targetSegId = currentSegmentId.incrementAndGet()
+                            val fallback = lastEmittedPartial
+                            decoderExecutor.execute {
+                                if (session.running.get() && !session.cancelled.get()) {
+                                    val committedText = decodeWaveform(currentRecognizer, remainingSamples)
+                                    val textToEmit = if (committedText.isNotEmpty()) committedText else fallback
+                                    if (textToEmit.isNotEmpty() && !session.cancelled.get()) {
+                                        Log.i(TAG, "Final lingering segment committed: '$textToEmit'")
+                                        callback.onFinal(textToEmit)
+                                    }
+                                }
                             }
                         }
                     } else {
                         if (buffer.size > 0 && !session.cancelled.get()) {
                             val finalSamples = buffer.toFloatArray()
-                            currentSegmentId.incrementAndGet()
-                            val committedText = decodeWaveform(currentRecognizer, finalSamples)
-                            val textToEmit = if (committedText.isNotEmpty()) committedText else lastEmittedPartial
-                            if (textToEmit.isNotEmpty() && !session.cancelled.get()) {
-                                Log.i(TAG, "Final session commit via RMS fallback: '$textToEmit'")
-                                callback.onFinal(textToEmit)
+                            val targetSegId = currentSegmentId.incrementAndGet()
+                            val fallback = lastEmittedPartial
+                            decoderExecutor.execute {
+                                if (session.running.get() && !session.cancelled.get()) {
+                                    val committedText = decodeWaveform(currentRecognizer, finalSamples)
+                                    val textToEmit = if (committedText.isNotEmpty()) committedText else fallback
+                                    if (textToEmit.isNotEmpty() && !session.cancelled.get()) {
+                                        Log.i(TAG, "Final session commit via RMS fallback: '$textToEmit'")
+                                        callback.onFinal(textToEmit)
+                                    }
+                                }
                             }
+                        }
+                    }
+
+                    // Complete session notification strictly after all pending decodes finish on decoderExecutor
+                    decoderExecutor.execute {
+                        if (!session.cancelled.get()) {
+                            try { callback.onSessionEnded() } catch (_: Throwable) {}
                         }
                     }
                 }
@@ -519,10 +540,9 @@ class ParakeetTdtEngine {
                 if (activeSession === session) {
                     activeSession = null
                 }
-                if (!session.cancelled.get()) {
-                    try { callback.onSessionEnded() } catch (_: Throwable) {}
+                decoderExecutor.execute {
+                    try { vad?.release() } catch (_: Throwable) {}
                 }
-                try { vad?.release() } catch (_: Throwable) {}
                 try { inputStream?.close() } catch (_: Throwable) {}
                 try { audioInput.close() } catch (_: Throwable) {}
             }

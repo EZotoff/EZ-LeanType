@@ -70,7 +70,8 @@ class VoiceInputManager(
     private var lastPartialText: String? = null
     private var handshakeTimeoutRunnable: Runnable? = null
     private var needsCapitalStart = true
-    private var lastComposingText = ""
+    private var currentSegmentEmittedLength = 0
+    private var lastFinalText: String? = null
 
     private var isCurrentSessionOnline = false
     private val onlineAudioBuffer = ByteArrayOutputStream()
@@ -154,7 +155,8 @@ class VoiceInputManager(
         val sessionId = UUID.randomUUID().toString()
         activeSessionId = sessionId
         needsCapitalStart = true
-        lastComposingText = ""
+        currentSegmentEmittedLength = 0
+        lastFinalText = null
         lastPartialText = null
         isCurrentSessionOnline = false
 
@@ -210,7 +212,8 @@ class VoiceInputManager(
         val sessionId = UUID.randomUUID().toString()
         activeSessionId = sessionId
         needsCapitalStart = true
-        lastComposingText = ""
+        currentSegmentEmittedLength = 0
+        lastFinalText = null
         lastPartialText = null
         isCurrentSessionOnline = true
 
@@ -342,6 +345,16 @@ class VoiceInputManager(
                 Log.i(TAG, "Received onSessionEnded, state=$state")
                 mainHandler.post {
                     if (activeSessionId == sessionId) {
+                        val ic = ims.currentInputConnection
+                        if (ic != null && currentSegmentEmittedLength > 0) {
+                            ic.beginBatchEdit()
+                            try {
+                                ic.commitText(" ", 1)
+                            } finally {
+                                ic.endBatchEdit()
+                            }
+                            currentSegmentEmittedLength = 0
+                        }
                         cleanupSession()
                         if (state != VoiceState.ERROR) {
                             updateState(VoiceState.IDLE)
@@ -724,10 +737,16 @@ class VoiceInputManager(
 
         if (isFinal) {
             if (trimmed.isEmpty()) {
-                if (lastComposingText.isNotEmpty()) {
-                    ic.finishComposingText()
-                    lastComposingText = ""
+                if (currentSegmentEmittedLength > 0) {
+                    ic.beginBatchEdit()
+                    try {
+                        ic.commitText(" ", 1)
+                    } finally {
+                        ic.endBatchEdit()
+                    }
+                    currentSegmentEmittedLength = 0
                 }
+                lastPartialText = null
                 return
             }
 
@@ -739,6 +758,12 @@ class VoiceInputManager(
 
             ic.beginBatchEdit()
             try {
+                // If there was an active partial preview on screen, replace it
+                if (currentSegmentEmittedLength > 0) {
+                    ic.deleteSurroundingText(currentSegmentEmittedLength, 0)
+                    currentSegmentEmittedLength = 0
+                }
+
                 // If starting with punctuation right after a trailing space from a previous segment,
                 // remove the space so punctuation attaches cleanly to the preceding word
                 val firstChar = displayText.first()
@@ -752,16 +777,25 @@ class VoiceInputManager(
                 ic.commitText("$displayText ", 1)
                 val lastChar = displayText.lastOrNull()
                 needsCapitalStart = lastChar != null && lastChar in ".!?"
-                lastComposingText = ""
+                lastFinalText = displayText
                 lastPartialText = null
+                currentSegmentEmittedLength = 0
             } finally {
                 ic.endBatchEdit()
             }
         } else {
-            // Streaming partial update: use Android's native composing span
-            // This safely replaces the active composing text without ever touching previous words
+            // Streaming partial update
             if (trimmed.isEmpty()) return
             if (trimmed == lastPartialText) return
+
+            // Guard against obsolete partial echos that arrive right after onFinal
+            val finalRef = lastFinalText
+            if (finalRef != null && currentSegmentEmittedLength == 0) {
+                if (trimmed == finalRef || finalRef.startsWith(trimmed)) {
+                    Log.d(TAG, "Ignoring obsolete partial echo: '$trimmed' vs final '$finalRef'")
+                    return
+                }
+            }
             lastPartialText = trimmed
 
             val displayText = if (needsCapitalStart && trimmed.isNotEmpty()) {
@@ -770,17 +804,37 @@ class VoiceInputManager(
                 trimmed
             }
 
-            lastComposingText = displayText
-            ic.setComposingText(displayText, 1)
+            ic.beginBatchEdit()
+            try {
+                // Atomically delete the previous preview of this segment and commit the new preview
+                if (currentSegmentEmittedLength > 0) {
+                    ic.deleteSurroundingText(currentSegmentEmittedLength, 0)
+                } else {
+                    // First partial of a new segment: if it starts with punctuation after a space, attach it
+                    val firstChar = displayText.first()
+                    if (firstChar in ",.?!;:") {
+                        val before = ic.getTextBeforeCursor(1, 0)?.toString()
+                        if (before == " ") {
+                            ic.deleteSurroundingText(1, 0)
+                        }
+                    }
+                }
+                ic.commitText(displayText, 1)
+                currentSegmentEmittedLength = displayText.length
+            } finally {
+                ic.endBatchEdit()
+            }
         }
     }
 
     fun onUpdateSelection(oldSelStart: Int, oldSelEnd: Int, newSelStart: Int, newSelEnd: Int, candidatesStart: Int, candidatesEnd: Int) {
-        // Delta algorithm tracks emitted text directly
     }
 
     private fun executeVoiceCommand(action: VoiceTextProcessor.Action, ic: InputConnection) {
-        ic.finishComposingText()
+        if (currentSegmentEmittedLength > 0) {
+            ic.deleteSurroundingText(currentSegmentEmittedLength, 0)
+            currentSegmentEmittedLength = 0
+        }
         when (action) {
             VoiceTextProcessor.Action.NEW_LINE -> {
                 ic.commitText("\n", 1)
@@ -821,13 +875,15 @@ class VoiceInputManager(
 
     private fun clearComposingText() {
         val ic = ims.currentInputConnection
-        if (ic != null) {
-            if (lastComposingText.isNotEmpty()) {
-                ic.setComposingText("", 1)
+        if (ic != null && currentSegmentEmittedLength > 0) {
+            ic.beginBatchEdit()
+            try {
+                ic.deleteSurroundingText(currentSegmentEmittedLength, 0)
+            } finally {
+                ic.endBatchEdit()
             }
-            ic.finishComposingText()
         }
-        lastComposingText = ""
+        currentSegmentEmittedLength = 0
         lastPartialText = null
     }
 
@@ -845,7 +901,8 @@ class VoiceInputManager(
         closeQuietly(audioPipeWriteSide)
         audioPipeWriteSide = null
         activeSessionId = null
-        lastComposingText = ""
+        currentSegmentEmittedLength = 0
+        lastFinalText = null
         lastPartialText = null
     }
 
