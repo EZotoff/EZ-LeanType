@@ -70,7 +70,7 @@ class VoiceInputManager(
     private var lastPartialText: String? = null
     private var handshakeTimeoutRunnable: Runnable? = null
     private var needsCapitalStart = true
-    private var sessionEmittedText = ""
+    private var lastComposingText = ""
 
     private var isCurrentSessionOnline = false
     private val onlineAudioBuffer = ByteArrayOutputStream()
@@ -154,10 +154,12 @@ class VoiceInputManager(
         val sessionId = UUID.randomUUID().toString()
         activeSessionId = sessionId
         needsCapitalStart = true
-        sessionEmittedText = ""
+        lastComposingText = ""
+        lastPartialText = null
         isCurrentSessionOnline = false
 
         val initialIc = ims.currentInputConnection
+        initialIc?.finishComposingText()
         val beforeCursor = initialIc?.getTextBeforeCursor(2, 0)?.toString()
         if (!beforeCursor.isNullOrEmpty()) {
             val lastChar = beforeCursor.last()
@@ -208,7 +210,8 @@ class VoiceInputManager(
         val sessionId = UUID.randomUUID().toString()
         activeSessionId = sessionId
         needsCapitalStart = true
-        sessionEmittedText = ""
+        lastComposingText = ""
+        lastPartialText = null
         isCurrentSessionOnline = true
 
         val initialIc = ims.currentInputConnection
@@ -719,84 +722,56 @@ class VoiceInputManager(
         }
         val trimmed = processedRaw.trim().replace(Regex("\\s+"), " ")
 
-        // If onFinal has empty text (e.g. silence timeout fired after audio stream closed),
-        // lock whatever text was already emitted during partials and commit a trailing space.
-        if (isFinal && trimmed.isEmpty()) {
-            if (sessionEmittedText.isNotEmpty()) {
-                ic.beginBatchEdit()
-                try {
+        if (isFinal) {
+            if (trimmed.isEmpty()) {
+                if (lastComposingText.isNotEmpty()) {
                     ic.finishComposingText()
-                    ic.commitText(" ", 1)
-                    val lastChar = sessionEmittedText.lastOrNull()
-                    needsCapitalStart = lastChar != null && lastChar in ".!?"
-                } finally {
-                    ic.endBatchEdit()
-                    sessionEmittedText = ""
+                    lastComposingText = ""
                 }
+                return
             }
-            return
-        }
 
-        if (trimmed.isEmpty()) return
-
-        // Sentence capitalization for the current utterance
-        val fullTargetText = if (needsCapitalStart && trimmed.isNotEmpty()) {
-            trimmed.replaceFirstChar { if (it.isLowerCase()) it.titlecase(java.util.Locale.ROOT) else it.toString() }
-        } else {
-            trimmed
-        }
-
-        val current = sessionEmittedText
-
-        // During streaming partials, do not regress if incoming partial is just a shorter prefix of what is already on screen
-        if (!isFinal && fullTargetText.length < current.length && current.startsWith(fullTargetText)) {
-            return
-        }
-
-        // Find longest common prefix between what's in the editor from this utterance and the new target
-        var commonPrefixLen = 0
-        val minLen = minOf(current.length, fullTargetText.length)
-        while (commonPrefixLen < minLen && current[commonPrefixLen] == fullTargetText[commonPrefixLen]) {
-            commonPrefixLen++
-        }
-
-        val charsToDelete = current.length - commonPrefixLen
-        val textToAppend = fullTargetText.substring(commonPrefixLen)
-
-        if (charsToDelete == 0 && textToAppend.isEmpty() && !isFinal) {
-            return
-        }
-
-        Log.i(TAG, "syncRecognizedText: current='$current', target='$fullTargetText', commonPrefixLen=$commonPrefixLen, delete=$charsToDelete, append='$textToAppend', isFinal=$isFinal")
-
-        ic.beginBatchEdit()
-        try {
-            if (charsToDelete > 0) {
-                ic.deleteSurroundingText(charsToDelete, 0)
+            val displayText = if (needsCapitalStart && trimmed.isNotEmpty()) {
+                trimmed.replaceFirstChar { if (it.isLowerCase()) it.titlecase(java.util.Locale.ROOT) else it.toString() }
+            } else {
+                trimmed
             }
-            if (current.isEmpty() && charsToDelete == 0 && textToAppend.isNotEmpty()) {
-                val firstChar = textToAppend.first()
+
+            ic.beginBatchEdit()
+            try {
+                // If starting with punctuation right after a trailing space from a previous segment,
+                // remove the space so punctuation attaches cleanly to the preceding word
+                val firstChar = displayText.first()
                 if (firstChar in ",.?!;:") {
                     val before = ic.getTextBeforeCursor(1, 0)?.toString()
                     if (before == " ") {
                         ic.deleteSurroundingText(1, 0)
                     }
                 }
-            }
-            if (textToAppend.isNotEmpty()) {
-                ic.commitText(textToAppend, 1)
-            }
-            if (isFinal && fullTargetText.isNotEmpty()) {
-                ic.finishComposingText()
-                ic.commitText(" ", 1)
-                val lastChar = fullTargetText.lastOrNull()
+
+                ic.commitText("$displayText ", 1)
+                val lastChar = displayText.lastOrNull()
                 needsCapitalStart = lastChar != null && lastChar in ".!?"
-                sessionEmittedText = ""
-            } else {
-                sessionEmittedText = fullTargetText
+                lastComposingText = ""
+                lastPartialText = null
+            } finally {
+                ic.endBatchEdit()
             }
-        } finally {
-            ic.endBatchEdit()
+        } else {
+            // Streaming partial update: use Android's native composing span
+            // This safely replaces the active composing text without ever touching previous words
+            if (trimmed.isEmpty()) return
+            if (trimmed == lastPartialText) return
+            lastPartialText = trimmed
+
+            val displayText = if (needsCapitalStart && trimmed.isNotEmpty()) {
+                trimmed.replaceFirstChar { if (it.isLowerCase()) it.titlecase(java.util.Locale.ROOT) else it.toString() }
+            } else {
+                trimmed
+            }
+
+            lastComposingText = displayText
+            ic.setComposingText(displayText, 1)
         }
     }
 
@@ -845,13 +820,14 @@ class VoiceInputManager(
     }
 
     private fun clearComposingText() {
-        if (sessionEmittedText.isNotEmpty()) {
-            val ic = ims.currentInputConnection
-            if (ic != null) {
-                ic.deleteSurroundingText(sessionEmittedText.length, 0)
+        val ic = ims.currentInputConnection
+        if (ic != null) {
+            if (lastComposingText.isNotEmpty()) {
+                ic.setComposingText("", 1)
             }
-            sessionEmittedText = ""
+            ic.finishComposingText()
         }
+        lastComposingText = ""
         lastPartialText = null
     }
 
@@ -869,7 +845,8 @@ class VoiceInputManager(
         closeQuietly(audioPipeWriteSide)
         audioPipeWriteSide = null
         activeSessionId = null
-        sessionEmittedText = ""
+        lastComposingText = ""
+        lastPartialText = null
     }
 
     @Synchronized
