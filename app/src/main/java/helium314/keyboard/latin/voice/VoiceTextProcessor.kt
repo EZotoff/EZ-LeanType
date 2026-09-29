@@ -21,13 +21,13 @@ object VoiceTextProcessor {
 
     // Pre-compile regex patterns at the object level to avoid main-thread allocations
     private val PUNCT_REGEX = Regex(
-        """\b(question mark|exclamation mark|exclamation point|full stop|period|comma|semicolon|colon)\b""",
+        """(?U)\b(question mark|exclamation mark|exclamation point|full stop|period|comma|semicolon|colon|вопросительный знак|восклицательный знак|точка с запятой|точка|запятая|двоеточие)\b""",
         RegexOption.IGNORE_CASE
     )
     private val SPACE_BEFORE_PUNCT = Regex("""\s+([,;.!?])""")
     private val SPACE_AFTER_PUNCT = Regex("""([,;.!?])(?=\w)""")
 
-    private val COMMANDS = mapOf(
+    val COMMANDS = mapOf(
         "new line" to Action.NEW_LINE,
         "next line" to Action.NEW_LINE,
         "new paragraph" to Action.NEW_PARAGRAPH,
@@ -36,7 +36,13 @@ object VoiceTextProcessor {
         "clear all" to Action.CLEAR_ALL,
         "clear text" to Action.CLEAR_ALL,
         "send" to Action.SEND,
-        "send it" to Action.SEND
+        "send it" to Action.SEND,
+        "новая строка" to Action.NEW_LINE,
+        "новый абзац" to Action.NEW_PARAGRAPH,
+        "удалить слово" to Action.DELETE_LAST_WORD,
+        "стереть всё" to Action.CLEAR_ALL,
+        "очистить всё" to Action.CLEAR_ALL,
+        "отправить" to Action.SEND
     )
 
     private val PUNCT_MAP = mapOf(
@@ -47,8 +53,22 @@ object VoiceTextProcessor {
         "period" to ".",
         "comma" to ",",
         "semicolon" to ";",
-        "colon" to ":"
+        "colon" to ":",
+        "вопросительный знак" to "?",
+        "восклицательный знак" to "!",
+        "точка" to ".",
+        "запятая" to ",",
+        "двоеточие" to ":",
+        "точка с запятой" to ";"
     )
+
+    fun applySpokenPunctuation(raw: String): String {
+        var text = raw.trim()
+        text = PUNCT_REGEX.replace(text) { match ->
+            PUNCT_MAP[match.value.lowercase(Locale.ROOT)] ?: match.value
+        }
+        return text.replace(SPACE_BEFORE_PUNCT, "$1").replace(SPACE_AFTER_PUNCT, "$1 ")
+    }
 
     fun process(
         raw: String,

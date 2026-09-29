@@ -34,6 +34,7 @@ import java.io.ByteArrayOutputStream
 import java.io.FileOutputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.util.Locale
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -72,6 +73,7 @@ class VoiceInputManager(
     private var needsCapitalStart = true
     private var currentSegmentEmittedLength = 0
     private var lastFinalText: String? = null
+    private var lastCommittedTrailingSpace = false
 
     private var isCurrentSessionOnline = false
     private val onlineAudioBuffer = ByteArrayOutputStream()
@@ -85,6 +87,8 @@ class VoiceInputManager(
     }
 
     fun getState(): VoiceState = state
+
+    fun isVoiceActive(): Boolean = state != VoiceState.IDLE && state != VoiceState.ERROR
 
     fun isRecording(): Boolean = state == VoiceState.RECORDING || state == VoiceState.STARTING_SESSION
 
@@ -151,6 +155,14 @@ class VoiceInputManager(
         val isConnected = pluginManager.isPluginConnected()
         Log.i(TAG, "startVoice: isConnected=$isConnected")
 
+        try {
+            ims.handler.cancelResumeSuggestions()
+            ims.handler.cancelUpdateSuggestionStrip()
+            ims.inputLogic.finishInput()
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to finishInput before starting voice", e)
+        }
+
         pluginManager.cancelSession()
         val sessionId = UUID.randomUUID().toString()
         activeSessionId = sessionId
@@ -158,6 +170,7 @@ class VoiceInputManager(
         currentSegmentEmittedLength = 0
         lastFinalText = null
         lastPartialText = null
+        lastCommittedTrailingSpace = false
         isCurrentSessionOnline = false
 
         val initialIc = ims.currentInputConnection
@@ -167,6 +180,7 @@ class VoiceInputManager(
             val lastChar = beforeCursor.last()
             if (!Character.isWhitespace(lastChar)) {
                 initialIc.commitText(" ", 1)
+                lastCommittedTrailingSpace = true
             }
             val trimmedBefore = beforeCursor.trimEnd()
             if (trimmedBefore.isNotEmpty()) {
@@ -209,20 +223,31 @@ class VoiceInputManager(
     }
 
     private fun startOnlineVoice() {
+        try {
+            ims.handler.cancelResumeSuggestions()
+            ims.handler.cancelUpdateSuggestionStrip()
+            ims.inputLogic.finishInput()
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to finishInput before starting online voice", e)
+        }
+
         val sessionId = UUID.randomUUID().toString()
         activeSessionId = sessionId
         needsCapitalStart = true
         currentSegmentEmittedLength = 0
         lastFinalText = null
         lastPartialText = null
+        lastCommittedTrailingSpace = false
         isCurrentSessionOnline = true
 
         val initialIc = ims.currentInputConnection
+        initialIc?.finishComposingText()
         val beforeCursor = initialIc?.getTextBeforeCursor(2, 0)?.toString()
         if (!beforeCursor.isNullOrEmpty()) {
             val lastChar = beforeCursor.last()
             if (!Character.isWhitespace(lastChar)) {
                 initialIc.commitText(" ", 1)
+                lastCommittedTrailingSpace = true
             }
             val trimmedBefore = beforeCursor.trimEnd()
             if (trimmedBefore.isNotEmpty()) {
@@ -728,19 +753,31 @@ class VoiceInputManager(
         if (!isRecording.get() && !isFinal) return
 
         val isSmartPunctuationEnabled = ims.prefs().getBoolean(VoiceConstants.PREF_VOICE_SMART_PUNCTUATION, true)
-        val processedRaw = if (!isSmartPunctuationEnabled) {
-            rawText.replace(Regex("[,.?!;:]"), "")
+        val isCommandsEnabled = ims.prefs().getBoolean(VoiceConstants.PREF_VOICE_COMMANDS_ENABLED, true)
+
+        val processedRaw = if (isSmartPunctuationEnabled) {
+            VoiceTextProcessor.applySpokenPunctuation(rawText)
         } else {
-            rawText
+            rawText.replace(Regex("[,.?!;:]"), "")
         }
         val trimmed = processedRaw.trim().replace(Regex("\\s+"), " ")
 
         if (isFinal) {
+            if (isCommandsEnabled && trimmed.isNotEmpty()) {
+                val commandAction = VoiceTextProcessor.COMMANDS[trimmed.lowercase(Locale.ROOT)]
+                if (commandAction != null) {
+                    executeVoiceCommand(commandAction, ic)
+                    lastPartialText = null
+                    return
+                }
+            }
+
             if (trimmed.isEmpty()) {
                 if (currentSegmentEmittedLength > 0) {
                     ic.beginBatchEdit()
                     try {
                         ic.commitText(" ", 1)
+                        lastCommittedTrailingSpace = true
                     } finally {
                         ic.endBatchEdit()
                     }
@@ -750,10 +787,26 @@ class VoiceInputManager(
                 return
             }
 
-            val displayText = if (needsCapitalStart && trimmed.isNotEmpty()) {
-                trimmed.replaceFirstChar { if (it.isLowerCase()) it.titlecase(java.util.Locale.ROOT) else it.toString() }
+            var displayText = if (needsCapitalStart && trimmed.isNotEmpty()) {
+                trimmed.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString() }
             } else {
                 trimmed
+            }
+
+            // Question mark preservation:
+            // 1. If live streaming partial had detected a question mark ('?') but offline final flipped it to '.',
+            //    preserve the question mark.
+            // 2. If the sentence begins with an interrogative starter in English or Russian and ends with '.',
+            //    convert '.' to '?'.
+            if (displayText.endsWith(".")) {
+                if (lastPartialText?.trimEnd()?.endsWith("?") == true) {
+                    displayText = displayText.dropLast(1) + "?"
+                } else {
+                    val lower = displayText.lowercase(Locale.ROOT)
+                    if (QUESTION_PREFIXES.any { lower.startsWith(it) }) {
+                        displayText = displayText.dropLast(1) + "?"
+                    }
+                }
             }
 
             ic.beginBatchEdit()
@@ -764,10 +817,10 @@ class VoiceInputManager(
                     currentSegmentEmittedLength = 0
                 }
 
-                // If starting with punctuation right after a trailing space from a previous segment,
-                // remove the space so punctuation attaches cleanly to the preceding word
+                // If starting with punctuation right after a trailing space emitted by voice,
+                // remove only that voice-added trailing space so punctuation attaches cleanly to the preceding word
                 val firstChar = displayText.first()
-                if (firstChar in ",.?!;:") {
+                if (firstChar in ",.?!;:" && lastCommittedTrailingSpace) {
                     val before = ic.getTextBeforeCursor(1, 0)?.toString()
                     if (before == " ") {
                         ic.deleteSurroundingText(1, 0)
@@ -775,6 +828,7 @@ class VoiceInputManager(
                 }
 
                 ic.commitText("$displayText ", 1)
+                lastCommittedTrailingSpace = true
                 val lastChar = displayText.lastOrNull()
                 needsCapitalStart = lastChar != null && lastChar in ".!?"
                 lastFinalText = displayText
@@ -798,10 +852,17 @@ class VoiceInputManager(
             }
             lastPartialText = trimmed
 
-            val displayText = if (needsCapitalStart && trimmed.isNotEmpty()) {
-                trimmed.replaceFirstChar { if (it.isLowerCase()) it.titlecase(java.util.Locale.ROOT) else it.toString() }
+            var displayText = if (needsCapitalStart && trimmed.isNotEmpty()) {
+                trimmed.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString() }
             } else {
                 trimmed
+            }
+
+            if (displayText.endsWith(".")) {
+                val lower = displayText.lowercase(Locale.ROOT)
+                if (QUESTION_PREFIXES.any { lower.startsWith(it) }) {
+                    displayText = displayText.dropLast(1) + "?"
+                }
             }
 
             ic.beginBatchEdit()
@@ -810,12 +871,13 @@ class VoiceInputManager(
                 if (currentSegmentEmittedLength > 0) {
                     ic.deleteSurroundingText(currentSegmentEmittedLength, 0)
                 } else {
-                    // First partial of a new segment: if it starts with punctuation after a space, attach it
+                    // First partial of a new segment: if it starts with punctuation after a voice trailing space, attach it
                     val firstChar = displayText.first()
-                    if (firstChar in ",.?!;:") {
+                    if (firstChar in ",.?!;:" && lastCommittedTrailingSpace) {
                         val before = ic.getTextBeforeCursor(1, 0)?.toString()
                         if (before == " ") {
                             ic.deleteSurroundingText(1, 0)
+                            lastCommittedTrailingSpace = false
                         }
                     }
                 }
@@ -888,6 +950,12 @@ class VoiceInputManager(
     }
 
     private fun cleanupSession() {
+        try {
+            ims.inputLogic.finishInput()
+            ims.inputLogic.connection.tryFixIncorrectCursorPosition()
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to reset inputLogic/connection in cleanupSession", e)
+        }
         onlineTranscriptionJob?.cancel()
         onlineTranscriptionJob = null
         synchronized(onlineAudioBuffer) {
@@ -904,6 +972,7 @@ class VoiceInputManager(
         currentSegmentEmittedLength = 0
         lastFinalText = null
         lastPartialText = null
+        lastCommittedTrailingSpace = false
     }
 
     @Synchronized
@@ -939,6 +1008,23 @@ class VoiceInputManager(
         private const val FRAME_SIZE_SHORTS = SAMPLE_RATE * FRAME_SIZE_MS / 1000 // 480 shorts
         private const val FRAME_SIZE_BYTES = FRAME_SIZE_SHORTS * 2 // 960 bytes
         private const val HANDSHAKE_TIMEOUT_MS = 8000L
+
+        private val QUESTION_PREFIXES = arrayOf(
+            // English question words / auxiliaries
+            "what ", "why ", "how ", "when ", "where ", "who ", "which ", "whose ", "whom ",
+            "is ", "are ", "am ", "was ", "were ", "do ", "does ", "did ",
+            "can ", "could ", "should ", "would ", "will ", "won't ", "shall ",
+            "has ", "have ", "had ", "isn't ", "aren't ", "wasn't ", "weren't ",
+            "don't ", "doesn't ", "didn't ", "can't ", "couldn't ", "shouldn't ", "wouldn't ",
+            // Russian question words / interrogatives
+            "почему ", "зачем ", "как ", "где ", "куда ", "откуда ", "когда ",
+            "кто ", "что ", "чей ", "чья ", "чье ", "чьё ", "чьи ",
+            "какой ", "какая ", "какое ", "какие ", "какого ", "какому ", "каким ",
+            "сколько ", "насколько ",
+            "правда ли ", "неужели ", "разве ",
+            "а почему ", "а зачем ", "а как ", "а где ", "а куда ", "а откуда ", "а когда ",
+            "а кто ", "а что ", "а разве ", "а правда "
+        )
 
         fun isBlockedEditor(info: EditorInfo?): Boolean {
             if (info == null) return false

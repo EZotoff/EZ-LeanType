@@ -855,6 +855,13 @@ class LatinIME : InputMethodService(),
         super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, composingSpanStart, composingSpanEnd)
         voiceInputManager?.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, composingSpanStart, composingSpanEnd)
         
+        if (voiceInputManager?.isVoiceActive() == true) {
+            // Voice input is actively controlling text input.
+            // Bypassing InputLogic prevents it from setting stale composing regions,
+            // corrupting cursor caches, or clobbering previous words in apps like Telegram.
+            return
+        }
+
         if (DebugFlags.DEBUG_ENABLED) {
             Log.i(TAG, "onUpdateSelection: oss=$oldSelStart, ose=$oldSelEnd, nss=$newSelStart, nse=$newSelEnd, cs=$composingSpanStart, ce=$composingSpanEnd")
         }
@@ -1265,6 +1272,10 @@ class LatinIME : InputMethodService(),
             return
         }
         
+        if (voiceInputManager?.isVoiceActive() == true) {
+            voiceInputManager?.stopVoice()
+        }
+
         val completeInputTransaction = inputLogic.onCodeInput(settings.current, event, keyboardSwitcher.keyboardShiftMode, handler)
         updateStateAfterInputTransaction(completeInputTransaction)
         keyboardSwitcher.onEvent(event, currentAutoCapsState, currentRecapitalizeState)
@@ -1272,6 +1283,9 @@ class LatinIME : InputMethodService(),
 
     fun onTextInput(rawText: String?) {
         if (rawText == null) return
+        if (voiceInputManager?.isVoiceActive() == true) {
+            voiceInputManager?.stopVoice()
+        }
         val event = Event.createSoftwareTextEvent(rawText, KeyCode.MULTIPLE_CODE_POINTS, null)
         val completeInputTransaction = inputLogic.onTextInput(settings.current, event, keyboardSwitcher.keyboardShiftMode, handler)
         updateStateAfterInputTransaction(completeInputTransaction)
