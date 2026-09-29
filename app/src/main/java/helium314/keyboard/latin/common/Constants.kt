@@ -10,13 +10,13 @@ object Links {
     const val DICTIONARY_NORMAL_SUFFIX = "dictionaries/"
     const val DICTIONARY_EXPERIMENTAL_SUFFIX = "dictionaries_experimental/"
     const val DICTIONARY_EMOJI_CLDR_SUFFIX = "emoji_cldr_signal_dictionaries/"
-    // LeanBitBoard fork repo
-    const val GITHUB = "https://github.com/LeanBitLab/HeliboardL"
+    // EZ LeanType fork repo
+    const val GITHUB = "https://github.com/EZotoff/EZ-LeanType"
     const val LICENSE = "$GITHUB/blob/main/LICENSE"
-    const val SPONSOR = "https://github.com/sponsors/LeanBitLab"
+    const val SPONSOR = "https://github.com/sponsors/EZotoff"
     const val OPEN_COLLECTIVE = "https://opencollective.com/leanbitlab-org"
-    const val GITHUB_RELEASES_API = "https://api.github.com/repos/LeanBitLab/HeliboardL/releases/latest"
-    const val GITHUB_RELEASES_PAGE = "https://github.com/LeanBitLab/HeliboardL/releases"
+    const val GITHUB_RELEASES_API = "https://api.github.com/repos/EZotoff/EZ-LeanType/releases/latest"
+    const val GITHUB_RELEASES_PAGE = "https://github.com/EZotoff/EZ-LeanType/releases"
     const val FEATURES_URL = "$GITHUB/blob/main/docs/FEATURES.md"
     // Original HeliBoard wiki and community links
     const val ORIGINAL_GITHUB = "https://github.com/Helium314/HeliBoard"

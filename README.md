@@ -1,24 +1,22 @@
-# LeanType
+# EZ LeanType
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/leantype_banner_dark.svg">
   <source media="(prefers-color-scheme: light)" srcset="docs/images/leantype_banner_light.svg">
-  <img alt="LeanType Banner" src="docs/images/leantype_banner_light.svg">
+  <img alt="EZ LeanType Banner" src="docs/images/leantype_banner_light.svg">
 </picture>
 
 <div align="center">
 
-[![Latest Release](https://img.shields.io/github/v/release/LeanBitLab/LeanType?style=flat-square&color=4f46e5&label=Release)](https://github.com/LeanBitLab/LeanType/releases/latest)
-[![Downloads](https://img.shields.io/github/downloads/LeanBitLab/LeanType/total?style=flat-square&color=059669&label=Downloads)](https://github.com/LeanBitLab/LeanType/releases)
-[![Stars](https://img.shields.io/github/stars/LeanBitLab/LeanType?style=flat-square&color=dc2626&label=Stars)](https://github.com/LeanBitLab/LeanType/stargazers)
+[![Latest Release](https://img.shields.io/github/v/release/EZotoff/EZ-LeanType?style=flat-square&color=4f46e5&label=Release)](https://github.com/EZotoff/EZ-LeanType/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/EZotoff/EZ-LeanType/total?style=flat-square&color=059669&label=Downloads)](https://github.com/EZotoff/EZ-LeanType/releases)
+[![Stars](https://img.shields.io/github/stars/EZotoff/EZ-LeanType?style=flat-square&color=dc2626&label=Stars)](https://github.com/EZotoff/EZ-LeanType/stargazers)
 [![License: GPL v3](https://img.shields.io/badge/License-GPL_v3-blue.svg?style=flat-square)](https://www.gnu.org/licenses/gpl-3.0)
-[![Sponsor](https://img.shields.io/badge/Sponsor-LeanBitLab-db2777?style=flat-square&logo=githubsponsors&logoColor=white)](https://github.com/sponsors/LeanBitLab)
-[![Donate on Open Collective](https://img.shields.io/badge/Donate-Open_Collective-1f6feb?style=flat-square&logo=opencollective&logoColor=white)](https://opencollective.com/leanbitlab-org)
 
 **A private, smart, and deeply customizable open-source Android keyboard.**  
-*Forked from [HeliBoard](https://github.com/Helium314/HeliBoard) / OpenBoard / AOSP LatinIME.*
+*Forked from LeanType / HeliBoard / OpenBoard / AOSP LatinIME. Maintained by [Evgeny Zotov](https://github.com/EZotoff).*
 
-[Screenshots](#-screenshots) • [Download APKs](#-download) • [Flavor Comparison](#-flavor-comparison) • [Features](#-features) • [Setup Guide](#-setup-guide) • [Ecosystem](#-ecosystem--plugins) • [Other Projects](https://github.com/LeanBitLab#-android-projects)
+[Screenshots](#-screenshots) • [Download APKs](#-download) • [Flavor Comparison](#-flavor-comparison) • [Features](#-features) • [Setup Guide](#-setup-guide) • [Ecosystem](#-ecosystem--plugins)
 
 </div>
 
