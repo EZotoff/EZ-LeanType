@@ -232,16 +232,21 @@ class ParakeetTdtEngine {
         activeSession = session
 
         // Initialize VAD for this session if model is available
+        // Silero VAD tuned for phone mic dictation:
+        // - threshold 0.35: prevents swallowing quiet leading consonants (sh, th, s, f)
+        // - minSilenceDuration 0.35s: natural conversational pause before sentence finalization
+        // - minSpeechDuration 0.15s: catches short monosyllabic words (to, a, I, so) without noise reject
+        // - maxSpeechDuration 8.0s: ample sentence headroom without buffer bloat
         val currentVadConfig = vadModelPath?.let { path ->
             try {
                 VadModelConfig().apply {
                     sileroVadModelConfig = SileroVadModelConfig(
                         model = path,
-                        threshold = 0.5f,
-                        minSilenceDuration = 0.6f,
+                        threshold = 0.35f,
+                        minSilenceDuration = 0.35f,
                         minSpeechDuration = 0.15f,
                         windowSize = 512,
-                        maxSpeechDuration = 30.0f
+                        maxSpeechDuration = 8.0f
                     )
                     sampleRate = 16000
                     numThreads = 1
@@ -264,7 +269,7 @@ class ParakeetTdtEngine {
 
         audioExecutor.execute {
             var inputStream: FileInputStream? = null
-            val buffer = FloatBuffer(16000 * 15)
+            val buffer = FloatBuffer(16000 * 12)
             val currentSegmentId = AtomicInteger(0)
             val isPartialDecoding = AtomicBoolean(false)
             var lastEmittedPartial = ""
@@ -331,10 +336,10 @@ class ParakeetTdtEngine {
                             vadOffset += windowSize
                         }
 
-                        // Pre-roll management: discard initial silence before speech starts, retaining ~320ms context
+                        // Pre-roll management: discard initial silence before speech starts, retaining ~480ms context
                         // Dropping in exact multiples of windowSize (512) preserves strict window alignment
                         if (!speechStarted) {
-                            val maxPreRoll = 10 * windowSize
+                            val maxPreRoll = 15 * windowSize
                             if (buffer.size > maxPreRoll) {
                                 val drop = buffer.size - maxPreRoll
                                 val alignedDrop = (drop / windowSize) * windowSize
@@ -370,20 +375,17 @@ class ParakeetTdtEngine {
                         // Segment finalization: VAD detected natural speech pause or maxSpeechDuration
                         while (!vad.empty() && !session.cancelled.get()) {
                             val segment = vad.front()
-                            vad.pop()
+                            // CRITICAL: Extract samples BEFORE vad.pop() to prevent reading freed native memory
                             val segSamples = segment.samples
+                            vad.pop()
+
                             if (segSamples.isNotEmpty()) {
                                 currentSegmentId.incrementAndGet()
-                                val fallbackPartial = lastEmittedPartial
-                                decoderExecutor.execute {
-                                    if (session.running.get() && !session.cancelled.get()) {
-                                        val committedText = decodeWaveform(currentRecognizer, segSamples)
-                                        val textToEmit = if (committedText.isNotEmpty()) committedText else fallbackPartial
-                                        if (textToEmit.isNotEmpty() && !session.cancelled.get()) {
-                                            Log.i(TAG, "Segment committed via VAD (${segSamples.size} samples): '$textToEmit'")
-                                            callback.onFinal(textToEmit)
-                                        }
-                                    }
+                                val committedText = decodeWaveform(currentRecognizer, segSamples)
+                                val textToEmit = if (committedText.isNotEmpty()) committedText else lastEmittedPartial
+                                if (textToEmit.isNotEmpty() && !session.cancelled.get()) {
+                                    Log.i(TAG, "Segment committed via VAD (${segSamples.size} samples): '$textToEmit'")
+                                    callback.onFinal(textToEmit)
                                 }
                             }
 
@@ -417,27 +419,22 @@ class ParakeetTdtEngine {
                         }
 
                         if (!speechStarted) {
-                            val maxPreRoll = 6400
+                            val maxPreRoll = 7680
                             if (buffer.size > maxPreRoll) {
                                 buffer.removeFirst(buffer.size - maxPreRoll)
                             }
                         }
 
-                        val shouldFinalize = speechStarted && (consecutiveSilenceSamples >= 11200 || buffer.size >= 480000)
+                        val shouldFinalize = speechStarted && (consecutiveSilenceSamples >= 5600 || buffer.size >= 128000)
 
                         if (shouldFinalize && !session.cancelled.get()) {
                             val segSamples = buffer.toFloatArray()
                             currentSegmentId.incrementAndGet()
-                            val fallbackPartial = lastEmittedPartial
-                            decoderExecutor.execute {
-                                if (session.running.get() && !session.cancelled.get()) {
-                                    val committedText = decodeWaveform(currentRecognizer, segSamples)
-                                    val textToEmit = if (committedText.isNotEmpty()) committedText else fallbackPartial
-                                    if (textToEmit.isNotEmpty() && !session.cancelled.get()) {
-                                        Log.i(TAG, "Segment committed via RMS fallback (${segSamples.size} samples): '$textToEmit'")
-                                        callback.onFinal(textToEmit)
-                                    }
-                                }
+                            val committedText = decodeWaveform(currentRecognizer, segSamples)
+                            val textToEmit = if (committedText.isNotEmpty()) committedText else lastEmittedPartial
+                            if (textToEmit.isNotEmpty() && !session.cancelled.get()) {
+                                Log.i(TAG, "Segment committed via RMS fallback (${segSamples.size} samples): '$textToEmit'")
+                                callback.onFinal(textToEmit)
                             }
                             buffer.clear()
                             speechStarted = false
@@ -474,61 +471,39 @@ class ParakeetTdtEngine {
                         var flushedCount = 0
                         while (!vad.empty() && !session.cancelled.get()) {
                             val segment = vad.front()
-                            vad.pop()
                             val segSamples = segment.samples
+                            vad.pop()
                             if (segSamples.isNotEmpty()) {
                                 flushedCount++
                                 currentSegmentId.incrementAndGet()
-                                val fallbackPartial = lastEmittedPartial
-                                decoderExecutor.execute {
-                                    if (!session.cancelled.get()) {
-                                        val committedText = decodeWaveform(currentRecognizer, segSamples)
-                                        val textToEmit = if (committedText.isNotEmpty()) committedText else fallbackPartial
-                                        if (textToEmit.isNotEmpty() && !session.cancelled.get()) {
-                                            Log.i(TAG, "Final flush segment committed via VAD: '$textToEmit'")
-                                            callback.onFinal(textToEmit)
-                                        }
-                                    }
+                                val committedText = decodeWaveform(currentRecognizer, segSamples)
+                                val textToEmit = if (committedText.isNotEmpty()) committedText else lastEmittedPartial
+                                if (textToEmit.isNotEmpty() && !session.cancelled.get()) {
+                                    Log.i(TAG, "Final flush segment committed via VAD: '$textToEmit'")
+                                    callback.onFinal(textToEmit)
                                 }
                             }
                         }
                         if (flushedCount == 0 && speechStarted && buffer.size > 0 && !session.cancelled.get()) {
                             val remainingSamples = buffer.toFloatArray()
                             currentSegmentId.incrementAndGet()
-                            val fallbackPartial = lastEmittedPartial
-                            decoderExecutor.execute {
-                                if (!session.cancelled.get()) {
-                                    val committedText = decodeWaveform(currentRecognizer, remainingSamples)
-                                    val textToEmit = if (committedText.isNotEmpty()) committedText else fallbackPartial
-                                    if (textToEmit.isNotEmpty() && !session.cancelled.get()) {
-                                        Log.i(TAG, "Final lingering segment committed: '$textToEmit'")
-                                        callback.onFinal(textToEmit)
-                                    }
-                                }
+                            val committedText = decodeWaveform(currentRecognizer, remainingSamples)
+                            val textToEmit = if (committedText.isNotEmpty()) committedText else lastEmittedPartial
+                            if (textToEmit.isNotEmpty() && !session.cancelled.get()) {
+                                Log.i(TAG, "Final lingering segment committed: '$textToEmit'")
+                                callback.onFinal(textToEmit)
                             }
                         }
                     } else {
                         if (buffer.size > 0 && !session.cancelled.get()) {
                             val finalSamples = buffer.toFloatArray()
                             currentSegmentId.incrementAndGet()
-                            val fallbackPartial = lastEmittedPartial
-                            decoderExecutor.execute {
-                                if (!session.cancelled.get()) {
-                                    val committedText = decodeWaveform(currentRecognizer, finalSamples)
-                                    val textToEmit = if (committedText.isNotEmpty()) committedText else fallbackPartial
-                                    if (textToEmit.isNotEmpty() && !session.cancelled.get()) {
-                                        Log.i(TAG, "Final session commit via RMS fallback: '$textToEmit'")
-                                        callback.onFinal(textToEmit)
-                                    }
-                                }
+                            val committedText = decodeWaveform(currentRecognizer, finalSamples)
+                            val textToEmit = if (committedText.isNotEmpty()) committedText else lastEmittedPartial
+                            if (textToEmit.isNotEmpty() && !session.cancelled.get()) {
+                                Log.i(TAG, "Final session commit via RMS fallback: '$textToEmit'")
+                                callback.onFinal(textToEmit)
                             }
-                        }
-                    }
-
-                    // Complete session notification strictly after all pending decodes finish
-                    decoderExecutor.execute {
-                        if (!session.cancelled.get()) {
-                            try { callback.onSessionEnded() } catch (_: Throwable) {}
                         }
                     }
                 }
@@ -544,9 +519,10 @@ class ParakeetTdtEngine {
                 if (activeSession === session) {
                     activeSession = null
                 }
-                decoderExecutor.execute {
-                    try { vad?.release() } catch (_: Throwable) {}
+                if (!session.cancelled.get()) {
+                    try { callback.onSessionEnded() } catch (_: Throwable) {}
                 }
+                try { vad?.release() } catch (_: Throwable) {}
                 try { inputStream?.close() } catch (_: Throwable) {}
                 try { audioInput.close() } catch (_: Throwable) {}
             }
