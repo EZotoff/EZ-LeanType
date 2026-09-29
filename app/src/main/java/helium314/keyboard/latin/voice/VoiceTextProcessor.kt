@@ -21,7 +21,7 @@ object VoiceTextProcessor {
 
     // Pre-compile regex patterns at the object level to avoid main-thread allocations
     private val PUNCT_REGEX = Regex(
-        """(?U)\b(question mark|exclamation mark|exclamation point|full stop|period|comma|semicolon|colon|вопросительный знак|восклицательный знак|точка с запятой|точка|запятая|двоеточие)\b""",
+        """(?<!\S)(question mark|exclamation mark|exclamation point|full stop|period|comma|semicolon|colon|вопросительный знак|восклицательный знак|точка с запятой|точка|запятая|двоеточие)(?!\S)""",
         RegexOption.IGNORE_CASE
     )
     private val SPACE_BEFORE_PUNCT = Regex("""\s+([,;.!?])""")
@@ -63,11 +63,15 @@ object VoiceTextProcessor {
     )
 
     fun applySpokenPunctuation(raw: String): String {
-        var text = raw.trim()
-        text = PUNCT_REGEX.replace(text) { match ->
-            PUNCT_MAP[match.value.lowercase(Locale.ROOT)] ?: match.value
+        return try {
+            var text = raw.trim()
+            text = PUNCT_REGEX.replace(text) { match ->
+                PUNCT_MAP[match.value.lowercase(Locale.ROOT)] ?: match.value
+            }
+            text.replace(SPACE_BEFORE_PUNCT, "$1").replace(SPACE_AFTER_PUNCT, "$1 ")
+        } catch (_: Throwable) {
+            raw
         }
-        return text.replace(SPACE_BEFORE_PUNCT, "$1").replace(SPACE_AFTER_PUNCT, "$1 ")
     }
 
     fun process(
@@ -82,10 +86,12 @@ object VoiceTextProcessor {
         // 1. Global spoken punctuation replacement
         var text = raw.trim()
         if (smartPunctuationEnabled) {
-            text = PUNCT_REGEX.replace(text) { match ->
-                PUNCT_MAP[match.value.lowercase(Locale.ROOT)] ?: match.value
-            }
-            text = text.replace(SPACE_BEFORE_PUNCT, "$1").replace(SPACE_AFTER_PUNCT, "$1 ")
+            try {
+                text = PUNCT_REGEX.replace(text) { match ->
+                    PUNCT_MAP[match.value.lowercase(Locale.ROOT)] ?: match.value
+                }
+                text = text.replace(SPACE_BEFORE_PUNCT, "$1").replace(SPACE_AFTER_PUNCT, "$1 ")
+            } catch (_: Throwable) {}
         }
 
         // 2. Linear tokenization using StringTokenizer

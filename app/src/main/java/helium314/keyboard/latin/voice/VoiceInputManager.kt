@@ -112,159 +112,167 @@ class VoiceInputManager(
     }
 
     fun startVoice() {
-        if (state == VoiceState.RECORDING) {
-            stopVoice()
-            return
-        }
-
-        if (state != VoiceState.IDLE && state != VoiceState.ERROR) {
-            Log.w(TAG, "Resetting previous state $state for new voice session")
-            cancelVoice()
-        }
-
-        if (!canStartVoice()) {
-            notifyError("Voice input not available or permission missing")
-            return
-        }
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            try {
-                ims.requestShowSelf(0)
-            } catch (e: Exception) {
-                Log.w(TAG, "Failed to requestShowSelf", e)
-            }
-        }
-
-        val onlineEnabled = RichInputMethodManager.getInstance().currentVoiceProvider == VoiceConstants.VOICE_PROVIDER_ONLINE
-        if (onlineEnabled) {
-            val service = ProofreadService(ims)
-            val provider = service.getProvider()
-            val hasKey = when (provider) {
-                ProofreadService.AIProvider.GEMINI -> service.hasApiKey()
-                ProofreadService.AIProvider.GROQ -> !service.getGroqToken().isNullOrBlank()
-                ProofreadService.AIProvider.OPENAI -> !service.getHuggingFaceToken().isNullOrBlank()
-            }
-            if (!hasKey) {
-                notifyError("API key for ${provider.name} not configured. Set it in Settings → AI Integration")
-                return
-            }
-            startOnlineVoice()
-            return
-        }
-
-        val isConnected = pluginManager.isPluginConnected()
-        Log.i(TAG, "startVoice: isConnected=$isConnected")
-
         try {
-            ims.handler.cancelResumeSuggestions()
-            ims.handler.cancelUpdateSuggestionStrip()
-            ims.inputLogic.finishInput()
-        } catch (e: Exception) {
-            Log.w(TAG, "Failed to finishInput before starting voice", e)
-        }
-
-        pluginManager.cancelSession()
-        val sessionId = UUID.randomUUID().toString()
-        activeSessionId = sessionId
-        needsCapitalStart = true
-        currentSegmentEmittedLength = 0
-        lastFinalText = null
-        lastPartialText = null
-        lastCommittedTrailingSpace = false
-        isCurrentSessionOnline = false
-
-        val initialIc = ims.currentInputConnection
-        initialIc?.finishComposingText()
-        val beforeCursor = initialIc?.getTextBeforeCursor(2, 0)?.toString()
-        if (!beforeCursor.isNullOrEmpty()) {
-            val lastChar = beforeCursor.last()
-            if (!Character.isWhitespace(lastChar)) {
-                initialIc.commitText(" ", 1)
-                lastCommittedTrailingSpace = true
-            }
-            val trimmedBefore = beforeCursor.trimEnd()
-            if (trimmedBefore.isNotEmpty()) {
-                val lastNonSpace = trimmedBefore.last()
-                needsCapitalStart = lastNonSpace in ".!?"
-            }
-        }
-
-        if (!isConnected) {
-            updateState(VoiceState.CONNECTING_PLUGIN)
-            pluginManager.setConnectionListener(object : VoicePluginManager.PluginConnectionListener {
-                override fun onPluginConnected(info: com.leanbitlab.leantype.voice.VoiceEngineInfo?) {
-                    mainHandler.post {
-                        if (activeSessionId == sessionId && state == VoiceState.CONNECTING_PLUGIN) {
-                            initiateSessionHandshake(sessionId)
-                        }
-                    }
-                }
-
-                override fun onPluginDisconnected() {
-                    mainHandler.post {
-                        if (activeSessionId == sessionId) {
-                            notifyError("Plugin disconnected unexpectedly")
-                            cleanupSession()
-                            updateState(VoiceState.ERROR)
-                        }
-                    }
-                }
-            })
-
-            val bound = pluginManager.bindIfNeeded()
-            if (!bound) {
-                notifyError("Failed to bind to voice plugin")
-                updateState(VoiceState.ERROR)
+            if (state == VoiceState.RECORDING) {
+                stopVoice()
                 return
             }
-        } else {
-            initiateSessionHandshake(sessionId)
+
+            if (state != VoiceState.IDLE && state != VoiceState.ERROR) {
+                Log.w(TAG, "Resetting previous state $state for new voice session")
+                cancelVoice()
+            }
+
+            if (!canStartVoice()) {
+                notifyError("Voice input not available or permission missing")
+                return
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                try {
+                    ims.requestShowSelf(0)
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to requestShowSelf", e)
+                }
+            }
+
+            val onlineEnabled = RichInputMethodManager.getInstance().currentVoiceProvider == VoiceConstants.VOICE_PROVIDER_ONLINE
+            if (onlineEnabled) {
+                val service = ProofreadService(ims)
+                val provider = service.getProvider()
+                val hasKey = when (provider) {
+                    ProofreadService.AIProvider.GEMINI -> service.hasApiKey()
+                    ProofreadService.AIProvider.GROQ -> !service.getGroqToken().isNullOrBlank()
+                    ProofreadService.AIProvider.OPENAI -> !service.getHuggingFaceToken().isNullOrBlank()
+                }
+                if (!hasKey) {
+                    notifyError("API key for ${provider.name} not configured. Set it in Settings → AI Integration")
+                    return
+                }
+                startOnlineVoice()
+                return
+            }
+
+            val isConnected = pluginManager.isPluginConnected()
+            Log.i(TAG, "startVoice: isConnected=$isConnected")
+
+            try {
+                ims.handler.cancelResumeSuggestions()
+                ims.handler.cancelUpdateSuggestionStrip()
+            } catch (_: Throwable) {}
+
+            pluginManager.cancelSession()
+            val sessionId = UUID.randomUUID().toString()
+            activeSessionId = sessionId
+            needsCapitalStart = true
+            currentSegmentEmittedLength = 0
+            lastFinalText = null
+            lastPartialText = null
+            lastCommittedTrailingSpace = false
+            isCurrentSessionOnline = false
+
+            val initialIc = ims.currentInputConnection
+            initialIc?.finishComposingText()
+            val beforeCursor = initialIc?.getTextBeforeCursor(2, 0)?.toString()
+            if (!beforeCursor.isNullOrEmpty()) {
+                val lastChar = beforeCursor.last()
+                if (!Character.isWhitespace(lastChar)) {
+                    initialIc.commitText(" ", 1)
+                    lastCommittedTrailingSpace = true
+                }
+                val trimmedBefore = beforeCursor.trimEnd()
+                if (trimmedBefore.isNotEmpty()) {
+                    val lastNonSpace = trimmedBefore.last()
+                    needsCapitalStart = lastNonSpace in ".!?"
+                }
+            }
+
+            if (!isConnected) {
+                updateState(VoiceState.CONNECTING_PLUGIN)
+                pluginManager.setConnectionListener(object : VoicePluginManager.PluginConnectionListener {
+                    override fun onPluginConnected(info: com.leanbitlab.leantype.voice.VoiceEngineInfo?) {
+                        mainHandler.post {
+                            if (activeSessionId == sessionId && state == VoiceState.CONNECTING_PLUGIN) {
+                                initiateSessionHandshake(sessionId)
+                            }
+                        }
+                    }
+
+                    override fun onPluginDisconnected() {
+                        mainHandler.post {
+                            if (activeSessionId == sessionId) {
+                                notifyError("Plugin disconnected unexpectedly")
+                                cleanupSession()
+                                updateState(VoiceState.ERROR)
+                            }
+                        }
+                    }
+                })
+
+                val bound = pluginManager.bindIfNeeded()
+                if (!bound) {
+                    notifyError("Failed to bind to voice plugin")
+                    updateState(VoiceState.ERROR)
+                    return
+                }
+            } else {
+                initiateSessionHandshake(sessionId)
+            }
+        } catch (e: Throwable) {
+            Log.e(TAG, "Fatal error in startVoice", e)
+            notifyError("Voice input failed: ${e.message}")
+            cleanupSession()
+            updateState(VoiceState.ERROR)
         }
     }
 
     private fun startOnlineVoice() {
         try {
-            ims.handler.cancelResumeSuggestions()
-            ims.handler.cancelUpdateSuggestionStrip()
-            ims.inputLogic.finishInput()
-        } catch (e: Exception) {
-            Log.w(TAG, "Failed to finishInput before starting online voice", e)
-        }
+            try {
+                ims.handler.cancelResumeSuggestions()
+                ims.handler.cancelUpdateSuggestionStrip()
+            } catch (_: Throwable) {}
 
-        val sessionId = UUID.randomUUID().toString()
-        activeSessionId = sessionId
-        needsCapitalStart = true
-        currentSegmentEmittedLength = 0
-        lastFinalText = null
-        lastPartialText = null
-        lastCommittedTrailingSpace = false
-        isCurrentSessionOnline = true
+            val sessionId = UUID.randomUUID().toString()
+            activeSessionId = sessionId
+            needsCapitalStart = true
+            currentSegmentEmittedLength = 0
+            lastFinalText = null
+            lastPartialText = null
+            lastCommittedTrailingSpace = false
+            isCurrentSessionOnline = true
 
-        val initialIc = ims.currentInputConnection
-        initialIc?.finishComposingText()
-        val beforeCursor = initialIc?.getTextBeforeCursor(2, 0)?.toString()
-        if (!beforeCursor.isNullOrEmpty()) {
-            val lastChar = beforeCursor.last()
-            if (!Character.isWhitespace(lastChar)) {
-                initialIc.commitText(" ", 1)
-                lastCommittedTrailingSpace = true
+            val initialIc = ims.currentInputConnection
+            initialIc?.finishComposingText()
+            val beforeCursor = initialIc?.getTextBeforeCursor(2, 0)?.toString()
+            if (!beforeCursor.isNullOrEmpty()) {
+                val lastChar = beforeCursor.last()
+                if (!Character.isWhitespace(lastChar)) {
+                    initialIc.commitText(" ", 1)
+                    lastCommittedTrailingSpace = true
+                }
+                val trimmedBefore = beforeCursor.trimEnd()
+                if (trimmedBefore.isNotEmpty()) {
+                    val lastNonSpace = trimmedBefore.last()
+                    needsCapitalStart = lastNonSpace in ".!?"
+                }
             }
-            val trimmedBefore = beforeCursor.trimEnd()
-            if (trimmedBefore.isNotEmpty()) {
-                val lastNonSpace = trimmedBefore.last()
-                needsCapitalStart = lastNonSpace in ".!?"
+
+            synchronized(onlineAudioBuffer) {
+                onlineAudioBuffer.reset()
             }
-        }
 
-        synchronized(onlineAudioBuffer) {
-            onlineAudioBuffer.reset()
-        }
-
-        val started = startAudioRecordingThread()
-        if (started) {
-            updateState(VoiceState.RECORDING)
-        } else {
-            notifyError("Failed to start audio recording")
+            val started = startAudioRecordingThread()
+            if (started) {
+                updateState(VoiceState.RECORDING)
+            } else {
+                notifyError("Failed to start audio recording")
+                cleanupSession()
+                updateState(VoiceState.ERROR)
+            }
+        } catch (e: Throwable) {
+            Log.e(TAG, "Fatal error in startOnlineVoice", e)
+            notifyError("Online voice failed: ${e.message}")
             cleanupSession()
             updateState(VoiceState.ERROR)
         }
@@ -745,12 +753,13 @@ class VoiceInputManager(
     }
 
     private fun syncRecognizedText(rawText: String, isFinal: Boolean) {
-        val ic = ims.currentInputConnection
-        if (ic == null) {
-            Log.e(TAG, "syncRecognizedText: InputConnection lost! (ic is null, isFinal=$isFinal)")
-            return
-        }
-        if (!isRecording.get() && !isFinal) return
+        try {
+            val ic = ims.currentInputConnection
+            if (ic == null) {
+                Log.e(TAG, "syncRecognizedText: InputConnection lost! (ic is null, isFinal=$isFinal)")
+                return
+            }
+            if (!isRecording.get() && !isFinal) return
 
         val isSmartPunctuationEnabled = ims.prefs().getBoolean(VoiceConstants.PREF_VOICE_SMART_PUNCTUATION, true)
         val isCommandsEnabled = ims.prefs().getBoolean(VoiceConstants.PREF_VOICE_COMMANDS_ENABLED, true)
@@ -887,6 +896,9 @@ class VoiceInputManager(
                 ic.endBatchEdit()
             }
         }
+        } catch (e: Throwable) {
+            Log.e(TAG, "Exception in syncRecognizedText", e)
+        }
     }
 
     fun onUpdateSelection(oldSelStart: Int, oldSelEnd: Int, newSelStart: Int, newSelEnd: Int, candidatesStart: Int, candidatesEnd: Int) {
@@ -953,7 +965,7 @@ class VoiceInputManager(
         try {
             ims.inputLogic.finishInput()
             ims.inputLogic.connection.tryFixIncorrectCursorPosition()
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Log.w(TAG, "Failed to reset inputLogic/connection in cleanupSession", e)
         }
         onlineTranscriptionJob?.cancel()

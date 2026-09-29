@@ -491,41 +491,45 @@ class LatinIME : InputMethodService(),
 
     fun onVoiceStateChanged(state: VoiceInputManager.VoiceState) {
         handler.post {
-            if (state == lastVoiceState) return@post
-            lastVoiceState = state
-            suggestionStripView?.let { strip ->
-                when (state) {
-                    VoiceInputManager.VoiceState.CONNECTING_PLUGIN, VoiceInputManager.VoiceState.STARTING_SESSION -> {
-                        strip.showVoiceStatus(
-                            getString(R.string.voice_status_connecting), false,
-                            { voiceInputManager?.stopVoice() }, { voiceInputManager?.cancelVoice() },
-                            VoiceVisualizerView.Mode.CONNECTING
-                        )
+            try {
+                if (state == lastVoiceState) return@post
+                lastVoiceState = state
+                suggestionStripView?.let { strip ->
+                    when (state) {
+                        VoiceInputManager.VoiceState.CONNECTING_PLUGIN, VoiceInputManager.VoiceState.STARTING_SESSION -> {
+                            strip.showVoiceStatus(
+                                getString(R.string.voice_status_connecting), false,
+                                { voiceInputManager?.stopVoice() }, { voiceInputManager?.cancelVoice() },
+                                VoiceVisualizerView.Mode.CONNECTING
+                            )
+                        }
+                        VoiceInputManager.VoiceState.RECORDING -> {
+                            strip.showVoiceStatus(
+                                getString(R.string.voice_status_listening), false,
+                                { voiceInputManager?.stopVoice() }, { voiceInputManager?.cancelVoice() },
+                                VoiceVisualizerView.Mode.RECORDING
+                            )
+                        }
+                        VoiceInputManager.VoiceState.PROCESSING_FINAL -> {
+                            strip.showVoiceStatus(
+                                getString(R.string.voice_status_processing), true,
+                                null, { voiceInputManager?.cancelVoice() },
+                                VoiceVisualizerView.Mode.PROCESSING
+                            )
+                        }
+                        else -> strip.hideVoiceStatus()
                     }
-                    VoiceInputManager.VoiceState.RECORDING -> {
-                        strip.showVoiceStatus(
-                            getString(R.string.voice_status_listening), false,
-                            { voiceInputManager?.stopVoice() }, { voiceInputManager?.cancelVoice() },
-                            VoiceVisualizerView.Mode.RECORDING
-                        )
-                    }
-                    VoiceInputManager.VoiceState.PROCESSING_FINAL -> {
-                        strip.showVoiceStatus(
-                            getString(R.string.voice_status_processing), true,
-                            null, { voiceInputManager?.cancelVoice() },
-                            VoiceVisualizerView.Mode.PROCESSING
-                        )
-                    }
-                    else -> strip.hideVoiceStatus()
                 }
-            }
-            
-            val kv = keyboardSwitcher.mainKeyboardView
-            val kb = kv?.keyboard
-            if (kv != null && kb != null) {
-                for (key in kb.sortedKeys) {
-                    if (key.code == KeyCode.VOICE_INPUT) kv.invalidateKey(key)
+                
+                val kv = keyboardSwitcher.mainKeyboardView
+                val kb = kv?.keyboard
+                if (kv != null && kb != null) {
+                    for (key in kb.sortedKeys) {
+                        if (key.code == KeyCode.VOICE_INPUT) kv.invalidateKey(key)
+                    }
                 }
+            } catch (e: Throwable) {
+                Log.e(TAG, "Error in onVoiceStateChanged", e)
             }
         }
     }
@@ -1252,22 +1256,27 @@ class LatinIME : InputMethodService(),
     fun onEvent(event: Event) {
         if (event.keyCode == KeyCode.SWITCH_TO_USER_IME) { switchToUserIme(); return }
         if (event.keyCode == KeyCode.VOICE_INPUT) {
-            when (richImm.currentVoiceProvider) {
-                VoiceConstants.VOICE_PROVIDER_OFFLINE, VoiceConstants.VOICE_PROVIDER_ONLINE -> {
-                    if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
-                        voiceInputManager?.let { vim ->
-                            if (vim.isRecording()) vim.stopVoice() else vim.startVoice()
+            try {
+                when (richImm.currentVoiceProvider) {
+                    VoiceConstants.VOICE_PROVIDER_OFFLINE, VoiceConstants.VOICE_PROVIDER_ONLINE -> {
+                        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                            voiceInputManager?.let { vim ->
+                                if (vim.isRecording()) vim.stopVoice() else vim.startVoice()
+                            }
+                        } else {
+                            Toast.makeText(this, "Microphone permission required for voice input. Enable in Settings -> Voice Input", Toast.LENGTH_LONG).show()
                         }
-                    } else {
-                        Toast.makeText(this, "Microphone permission required for voice input. Enable in Settings -> Voice Input", Toast.LENGTH_LONG).show()
+                    }
+                    VoiceConstants.VOICE_PROVIDER_THIRD_PARTY -> {
+                        richImm.switchToShortcutIme(this)
+                    }
+                    VoiceConstants.VOICE_PROVIDER_NONE -> {
+                        // Voice input is disabled
                     }
                 }
-                VoiceConstants.VOICE_PROVIDER_THIRD_PARTY -> {
-                    richImm.switchToShortcutIme(this)
-                }
-                VoiceConstants.VOICE_PROVIDER_NONE -> {
-                    // Voice input is disabled
-                }
+            } catch (e: Throwable) {
+                Log.e(TAG, "Exception handling voice input event", e)
+                Toast.makeText(this, "Voice input error: ${e.message}", Toast.LENGTH_SHORT).show()
             }
             return
         }

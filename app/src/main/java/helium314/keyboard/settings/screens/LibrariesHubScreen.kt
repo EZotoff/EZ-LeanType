@@ -202,7 +202,7 @@ fun LibrariesHubScreen(
                         Preference(
                             name = "Features Guide",
                             description = "View the detailed features.md guide on GitHub",
-                            onClick = { uriHandler.openUri("https://github.com/LeanBitLab/HeliboardL/blob/main/docs/FEATURES.md") },
+                            onClick = { uriHandler.openUri(helium314.keyboard.latin.common.Links.FEATURES_URL) },
                             icon = R.drawable.ic_settings_about_wiki
                         ) { NextScreenIcon() }
                     }
