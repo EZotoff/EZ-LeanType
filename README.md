@@ -164,20 +164,22 @@ LeanType features built-in on-device STT without needing a companion voice plugi
 
 #### 📦 Recommended Models & Direct Downloads
 
-| Model | Language & Target | Size | Source Repository |
+| Model | Language & Target | Size | Direct Download Links |
 | :--- | :--- | :---: | :--- |
-| **GigaAM v3 E2E RNN-T (INT8)** | **Russian (SOTA)**<br>Native punctuation & capitalization, 8.4% WER | **205 MB** | [Hugging Face (`pantinor/gigaam-v3`)](https://huggingface.co/pantinor/gigaam-v3) • [Direct Zip (`gigaam-v3-e2e-rnnt.zip`)](https://github.com/LeanBitLab/LeanType/releases/download/beta-427-1/gigaam-v3-e2e-rnnt.zip) |
-| **Parakeet TDT 110M (INT8)** | **English (Streaming)**<br>FastConformer real-time word-by-word streaming | **131 MB** | [Hugging Face (`csukuangfj/sherpa-onnx-nemo-fast-conformer-tdt-en-110m`)](https://huggingface.co/csukuangfj/sherpa-onnx-nemo-fast-conformer-tdt-en-110m) • [Direct Zip (`parakeet-tdt-110m.zip`)](https://github.com/LeanBitLab/LeanType/releases/download/beta-427-1/parakeet-tdt-110m.zip) |
-| **Whisper Large-v3-Turbo** | **Multilingual (99+ languages)**<br>Flagship Whisper accuracy | **548 MB** | [Hugging Face (`ggerganov/whisper.cpp`)](https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo-q5_0.bin) |
+| **GigaAM v3 E2E RNN-T (INT8)** | **Russian (SOTA)**<br>Native punctuation & capitalization, 8.4% WER | **205 MB** | [📥 **Download `gigaam-v3-e2e-rnnt.zip`**](https://github.com/EZotoff/EZ-LeanType/releases/download/v4.2.7/gigaam-v3-e2e-rnnt.zip)<br>• [Hugging Face Source (`pantinor/gigaam-v3`)](https://huggingface.co/pantinor/gigaam-v3) |
+| **Parakeet TDT 110M (INT8)** | **English (Streaming)**<br>FastConformer real-time word-by-word streaming | **131 MB** | [📥 **Download `parakeet-tdt-110m.zip`**](https://github.com/EZotoff/EZ-LeanType/releases/download/v4.2.7/parakeet-tdt-110m.zip)<br>• [Hugging Face Source (`csukuangfj/...`)](https://huggingface.co/csukuangfj/sherpa-onnx-nemo-fast-conformer-tdt-en-110m) |
+| **Whisper Small (Recommended)** | **Multilingual (99+ languages)**<br>Balanced accuracy & speed | **182 MB** | [📥 **Download `ggml-small-q5_1.bin`**](https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small-q5_1.bin) |
+| **Whisper Large-v3-Turbo** | **Multilingual (99+ languages)**<br>Highest accuracy Whisper | **548 MB** | [📥 **Download `ggml-large-v3-turbo-q5_0.bin`**](https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo-q5_0.bin) |
+| **Whisper Tiny** | **Multilingual (99+ languages)**<br>Ultra-lightweight (~100ms) | **32 MB** | [📥 **Download `ggml-tiny-q5_1.bin`**](https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny-q5_1.bin) |
 
 #### 📥 Installation & Setup Instructions
-1. **Install LeanType APK**: Install the latest `1-LeanType_4.2.7-standard-debug.apk` (or release APK) on your Android device.
-2. **Grant Microphone Permission**: Enable microphone access when prompted (or via Android Settings → Apps → LeanType → Permissions → Microphone).
-3. **Download Model Archive**: Download either **`gigaam-v3-e2e-rnnt.zip`** (for Russian) or **`parakeet-tdt-110m.zip`** (for English) from the links above.
-4. **Import Model in LeanType**:
-   - Open LeanType **Settings → Voice typing → Manage & Download Models**.
-   - Under **Custom GigaAM Model** (or **Custom Parakeet Model**), tap **Import File**.
-   - Select the downloaded `.zip` (or `.bin`) file from your device storage. LeanType unpacks and verifies all model weights automatically.
+1. **Install EZ LeanType APK**: Install [`EZ-LeanType-v4.2.7-debug.apk`](https://github.com/EZotoff/EZ-LeanType/releases/download/v4.2.7/EZ-LeanType-v4.2.7-debug.apk) on your Android device.
+2. **Grant Microphone Permission**: Enable microphone access when prompted (or via Android Settings → Apps → EZ LeanType → Permissions → Microphone).
+3. **Download Model Archive**: Download either [**`gigaam-v3-e2e-rnnt.zip`**](https://github.com/EZotoff/EZ-LeanType/releases/download/v4.2.7/gigaam-v3-e2e-rnnt.zip) (for Russian), [**`parakeet-tdt-110m.zip`**](https://github.com/EZotoff/EZ-LeanType/releases/download/v4.2.7/parakeet-tdt-110m.zip) (for English), or a Whisper `.bin` file from the table above.
+4. **Import Model in EZ LeanType**:
+   - Open EZ LeanType **Settings → Voice typing → Manage & Download Models**.
+   - Under **Custom Model**, tap **Import File**.
+   - Select the downloaded `.zip` or `.bin` file from your device storage. EZ LeanType unpacks and verifies all model weights automatically.
 5. **Configure Engine**:
    - In **Settings → Voice typing → Offline Voice Engine**, set to **Auto** (GigaAM v3 for Russian, Parakeet TDT for English, Whisper for others) or explicitly select your preferred engine.
 6. **Start Typing**: Tap the microphone icon on the keyboard toolbar and speak!

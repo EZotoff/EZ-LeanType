@@ -25,9 +25,9 @@ object VoiceModelRegistry {
             language = "Russian",
             languageCode = "ru",
             sizeMb = "205 MB",
-            downloadUrl = "http://127.0.0.1:8080/gigaam-v3-e2e-rnnt.zip",
-            backupDownloadUrl = "http://192.168.50.52:8080/gigaam-v3-e2e-rnnt.zip",
-            browserUrl = "http://127.0.0.1:8080/gigaam-v3-e2e-rnnt.zip",
+            downloadUrl = "https://github.com/EZotoff/EZ-LeanType/releases/download/v4.2.7/gigaam-v3-e2e-rnnt.zip",
+            backupDownloadUrl = "http://127.0.0.1:8080/gigaam-v3-e2e-rnnt.zip",
+            browserUrl = "https://github.com/EZotoff/EZ-LeanType/releases/download/v4.2.7/gigaam-v3-e2e-rnnt.zip",
             description = "Sber GigaAM v3 E2E RNN-T INT8: State-of-the-art Russian ASR with native punctuation and capitalization. 8.4% WER, runs on Sherpa-ONNX with real-time speed."
         )
     )
@@ -40,9 +40,9 @@ object VoiceModelRegistry {
             language = "English",
             languageCode = "en",
             sizeMb = "131 MB",
-            downloadUrl = "http://127.0.0.1:8080/parakeet-tdt-110m.zip",
-            backupDownloadUrl = "http://192.168.50.52:8080/parakeet-tdt-110m.zip",
-            browserUrl = "http://127.0.0.1:8080/parakeet-tdt-110m.zip",
+            downloadUrl = "https://github.com/EZotoff/EZ-LeanType/releases/download/v4.2.7/parakeet-tdt-110m.zip",
+            backupDownloadUrl = "http://127.0.0.1:8080/parakeet-tdt-110m.zip",
+            browserUrl = "https://github.com/EZotoff/EZ-LeanType/releases/download/v4.2.7/parakeet-tdt-110m.zip",
             description = "FastConformer TDT v3: Real-time word streaming with RTF < 0.05 on Nothing Phone (2)."
         )
     )
@@ -55,9 +55,9 @@ object VoiceModelRegistry {
             language = "Multilingual",
             languageCode = "mul",
             sizeMb = "548 MB",
-            downloadUrl = "http://127.0.0.1:8080/ggml-large-v3-turbo-q5_0.bin",
-            backupDownloadUrl = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo-q5_0.bin",
-            browserUrl = "http://127.0.0.1:8080/ggml-large-v3-turbo-q5_0.bin",
+            downloadUrl = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo-q5_0.bin",
+            backupDownloadUrl = "http://127.0.0.1:8080/ggml-large-v3-turbo-q5_0.bin",
+            browserUrl = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo-q5_0.bin",
             description = "809M parameter flagship Whisper model. High accuracy for multilingual speech."
         ),
         VoiceModelItem(
@@ -67,9 +67,9 @@ object VoiceModelRegistry {
             language = "Multilingual",
             languageCode = "mul",
             sizeMb = "182 MB",
-            downloadUrl = "http://127.0.0.1:8080/ggml-small-q5_1.bin",
-            backupDownloadUrl = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small-q5_1.bin",
-            browserUrl = "http://127.0.0.1:8080/ggml-small-q5_1.bin",
+            downloadUrl = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small-q5_1.bin",
+            backupDownloadUrl = "http://127.0.0.1:8080/ggml-small-q5_1.bin",
+            browserUrl = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small-q5_1.bin",
             description = "Maximum balance of accuracy and size for multilingual vocabulary."
         ),
         VoiceModelItem(
@@ -79,9 +79,9 @@ object VoiceModelRegistry {
             language = "Multilingual",
             languageCode = "mul",
             sizeMb = "57 MB",
-            downloadUrl = "http://127.0.0.1:8080/ggml-base-q5_1.bin",
-            backupDownloadUrl = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base-q5_1.bin",
-            browserUrl = "http://127.0.0.1:8080/ggml-base-q5_1.bin",
+            downloadUrl = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base-q5_1.bin",
+            backupDownloadUrl = "http://127.0.0.1:8080/ggml-base-q5_1.bin",
+            browserUrl = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base-q5_1.bin",
             description = "Compact multilingual Whisper model."
         ),
         VoiceModelItem(
@@ -91,9 +91,9 @@ object VoiceModelRegistry {
             language = "Multilingual",
             languageCode = "mul",
             sizeMb = "32 MB",
-            downloadUrl = "http://127.0.0.1:8080/ggml-tiny-q5_1.bin",
-            backupDownloadUrl = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny-q5_1.bin",
-            browserUrl = "http://127.0.0.1:8080/ggml-tiny-q5_1.bin",
+            downloadUrl = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny-q5_1.bin",
+            backupDownloadUrl = "http://127.0.0.1:8080/ggml-tiny-q5_1.bin",
+            browserUrl = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny-q5_1.bin",
             description = "Ultra-fast on Snapdragon 8+ Gen 1 (~100ms response). Pre-quantized Q5_1 GGML."
         )
     )

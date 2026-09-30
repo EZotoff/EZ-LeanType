@@ -20,8 +20,8 @@ LeanType integrates a multi-engine on-device speech-to-text pipeline that operat
   - `tokens.txt` (`gigaam_v3_e2e_rnnt_tokens.txt`)
   - `silero_vad.onnx` (for continuous VAD silence segmentation)
 - **Links**:
-  - **Hugging Face**: [pantinor/gigaam-v3](https://huggingface.co/pantinor/gigaam-v3)
-  - **Direct Download**: [`gigaam-v3-e2e-rnnt.zip`](https://github.com/LeanBitLab/LeanType/releases/download/beta-427-1/gigaam-v3-e2e-rnnt.zip)
+  - **Direct Download**: [`gigaam-v3-e2e-rnnt.zip`](https://github.com/EZotoff/EZ-LeanType/releases/download/v4.2.7/gigaam-v3-e2e-rnnt.zip)
+  - **Hugging Face Source**: [pantinor/gigaam-v3](https://huggingface.co/pantinor/gigaam-v3)
 
 ### 2. NeMo Parakeet TDT 110M (English Streaming)
 - **Primary Language**: English (`en`)
@@ -37,8 +37,8 @@ LeanType integrates a multi-engine on-device speech-to-text pipeline that operat
   - `tokens.txt`
   - `silero_vad.onnx`
 - **Links**:
-  - **Hugging Face**: [csukuangfj/sherpa-onnx-nemo-fast-conformer-tdt-en-110m](https://huggingface.co/csukuangfj/sherpa-onnx-nemo-fast-conformer-tdt-en-110m)
-  - **Direct Download**: [`parakeet-tdt-110m.zip`](https://github.com/LeanBitLab/LeanType/releases/download/beta-427-1/parakeet-tdt-110m.zip)
+  - **Direct Download**: [`parakeet-tdt-110m.zip`](https://github.com/EZotoff/EZ-LeanType/releases/download/v4.2.7/parakeet-tdt-110m.zip)
+  - **Hugging Face Source**: [csukuangfj/sherpa-onnx-nemo-fast-conformer-tdt-en-110m](https://huggingface.co/csukuangfj/sherpa-onnx-nemo-fast-conformer-tdt-en-110m)
 
 ### 3. Whisper (Multilingual)
 - **Primary Languages**: 99+ languages (`mul`)
@@ -48,24 +48,25 @@ LeanType integrates a multi-engine on-device speech-to-text pipeline that operat
 - **Recommended Models**:
   - **Large-v3-Turbo (548 MB)**: [ggerganov/whisper.cpp (ggml-large-v3-turbo-q5_0.bin)](https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo-q5_0.bin)
   - **Small (182 MB)**: [ggerganov/whisper.cpp (ggml-small-q5_1.bin)](https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small-q5_1.bin)
+  - **Tiny (32 MB)**: [ggerganov/whisper.cpp (ggml-tiny-q5_1.bin)](https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny-q5_1.bin)
 
 ---
 
 ## 📲 Step-by-Step Installation Instructions
 
-### Step 1: Install LeanType APK
-1. Download `1-LeanType_4.2.7-standard-debug.apk` (or the latest release APK).
+### Step 1: Install EZ LeanType APK
+1. Download [`EZ-LeanType-v4.2.7-debug.apk`](https://github.com/EZotoff/EZ-LeanType/releases/download/v4.2.7/EZ-LeanType-v4.2.7-debug.apk).
 2. Install the APK on your Android device (Android 6.0+ supported, Android 8.0+ recommended for Sherpa-ONNX).
-3. Follow the onboarding setup to enable **LeanType** as an active input method.
+3. Follow the onboarding setup to enable **EZ LeanType** as an active input method.
 
 ### Step 2: Grant Microphone Permission
 1. When you first tap the microphone icon on the keyboard toolbar, Android prompts for **Microphone permission**.
-2. Tap **"While using the app"** (or grant manually via **Android Settings → Apps → LeanType → Permissions → Microphone**).
+2. Tap **"While using the app"** (or grant manually via **Android Settings → Apps → EZ LeanType → Permissions → Microphone**).
 
 ### Step 3: Download & Import Models
 1. Download the model `.zip` file for your language:
-   - For Russian: [`gigaam-v3-e2e-rnnt.zip`](https://github.com/LeanBitLab/LeanType/releases/download/beta-427-1/gigaam-v3-e2e-rnnt.zip)
-   - For English: [`parakeet-tdt-110m.zip`](https://github.com/LeanBitLab/LeanType/releases/download/beta-427-1/parakeet-tdt-110m.zip)
+   - For Russian: [`gigaam-v3-e2e-rnnt.zip`](https://github.com/EZotoff/EZ-LeanType/releases/download/v4.2.7/gigaam-v3-e2e-rnnt.zip)
+   - For English: [`parakeet-tdt-110m.zip`](https://github.com/EZotoff/EZ-LeanType/releases/download/v4.2.7/parakeet-tdt-110m.zip)
 2. Open LeanType Settings:
    - Long-press `,` (comma) or tap the Settings gear on the keyboard toolbar.
    - Navigate to **Voice typing** (or **Speech & Voice**).
