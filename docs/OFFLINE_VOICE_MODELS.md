@@ -55,7 +55,7 @@ LeanType integrates a multi-engine on-device speech-to-text pipeline that operat
 ## 📲 Step-by-Step Installation Instructions
 
 ### Step 1: Install EZ LeanType APK
-1. Download [`EZ-LeanType-v4.2.7-debug.apk`](https://github.com/EZotoff/EZ-LeanType/releases/download/v4.2.7/EZ-LeanType-v4.2.7-debug.apk).
+1. Download [`EZ-LeanType-v4.2.8-debug.apk`](https://github.com/EZotoff/EZ-LeanType/releases/download/v4.2.8/EZ-LeanType-v4.2.8-debug.apk).
 2. Install the APK on your Android device (Android 6.0+ supported, Android 8.0+ recommended for Sherpa-ONNX).
 3. Follow the onboarding setup to enable **EZ LeanType** as an active input method.
 

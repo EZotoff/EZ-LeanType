@@ -173,7 +173,7 @@ LeanType features built-in on-device STT without needing a companion voice plugi
 | **Whisper Tiny** | **Multilingual (99+ languages)**<br>Ultra-lightweight (~100ms) | **32 MB** | [📥 **Download `ggml-tiny-q5_1.bin`**](https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny-q5_1.bin) |
 
 #### 📥 Installation & Setup Instructions
-1. **Install EZ LeanType APK**: Install [`EZ-LeanType-v4.2.7-debug.apk`](https://github.com/EZotoff/EZ-LeanType/releases/download/v4.2.7/EZ-LeanType-v4.2.7-debug.apk) on your Android device.
+1. **Install EZ LeanType APK**: Install [`EZ-LeanType-v4.2.8-debug.apk`](https://github.com/EZotoff/EZ-LeanType/releases/download/v4.2.8/EZ-LeanType-v4.2.8-debug.apk) on your Android device.
 2. **Grant Microphone Permission**: Enable microphone access when prompted (or via Android Settings → Apps → EZ LeanType → Permissions → Microphone).
 3. **Download Model Archive**: Download either [**`gigaam-v3-e2e-rnnt.zip`**](https://github.com/EZotoff/EZ-LeanType/releases/download/v4.2.7/gigaam-v3-e2e-rnnt.zip) (for Russian), [**`parakeet-tdt-110m.zip`**](https://github.com/EZotoff/EZ-LeanType/releases/download/v4.2.7/parakeet-tdt-110m.zip) (for English), or a Whisper `.bin` file from the table above.
 4. **Import Model in EZ LeanType**:
