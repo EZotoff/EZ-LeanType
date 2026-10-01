@@ -37,6 +37,7 @@ import org.mockito.Mockito
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.robolectric.annotation.ConscryptMode
 import org.robolectric.annotation.Implementation
 import org.robolectric.annotation.Implements
 import org.robolectric.shadows.ShadowLog
@@ -48,14 +49,18 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 @RunWith(RobolectricTestRunner::class)
-@Config(shadows = [
-    ShadowLocaleManagerCompat::class,
-    ShadowInputMethodManager2::class,
-    ShadowInputMethodService::class,
-    ShadowKeyboardSwitcher::class,
-    ShadowHandler::class,
-    ShadowFacilitator2::class,
-])
+@ConscryptMode(ConscryptMode.Mode.OFF)
+@Config(
+    sdk = [33],
+    shadows = [
+        ShadowLocaleManagerCompat::class,
+        ShadowInputMethodManager2::class,
+        ShadowInputMethodService::class,
+        ShadowKeyboardSwitcher::class,
+        ShadowHandler::class,
+        ShadowFacilitator2::class,
+    ]
+)
 class InputLogicTest {
     private lateinit var latinIME: LatinIME
     private val settingsValues get() = Settings.getValues()
@@ -711,6 +716,52 @@ class InputLogicTest {
         input('b')
         assertEquals("this b", text)
         assertEquals("b", composingText)
+    }
+
+    @Test fun testBackspaceAfterSuggestion() {
+        reset()
+        chainInput("hello ")
+        pickSuggestion("world")
+        assertEquals("hello world", text)
+        functionalKeyPress(KeyCode.DELETE)
+        assertEquals("hello worl", text)
+        functionalKeyPress(KeyCode.DELETE)
+        assertEquals("hello wor", text)
+    }
+
+    @Test fun testBackspaceAfterSuggestionImmediate() {
+        reset()
+        latinIME.prefs().edit { putBoolean(Settings.PREF_IMMEDIATE_AUTO_SPACE, true) }
+        chainInput("hello ")
+        pickSuggestion("world")
+        assertEquals("hello world ", text)
+        functionalKeyPress(KeyCode.DELETE)
+        assertEquals("hello world", text)
+        functionalKeyPress(KeyCode.DELETE)
+        assertEquals("hello worl", text)
+    }
+
+    @Test fun testBackspaceAfterTypingAndSuggestion() {
+        reset()
+        chainInput("hello wor")
+        pickSuggestion("world")
+        assertEquals("hello world", text)
+        functionalKeyPress(KeyCode.DELETE)
+        assertEquals("hello worl", text)
+        functionalKeyPress(KeyCode.DELETE)
+        assertEquals("hello wor", text)
+    }
+
+    @Test fun testBackspaceAfterTypingAndSuggestionImmediate() {
+        reset()
+        latinIME.prefs().edit { putBoolean(Settings.PREF_IMMEDIATE_AUTO_SPACE, true) }
+        chainInput("hello wor")
+        pickSuggestion("world")
+        assertEquals("hello world ", text)
+        functionalKeyPress(KeyCode.DELETE)
+        assertEquals("hello world", text)
+        functionalKeyPress(KeyCode.DELETE)
+        assertEquals("hello worl", text)
     }
 
     @Test fun `autospace works in URL field when input isn't URL`() {

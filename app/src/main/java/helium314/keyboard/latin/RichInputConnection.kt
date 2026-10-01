@@ -638,36 +638,7 @@ class RichInputConnection(private val mParent: InputMethodService) : PrivateComm
     }
 
     fun deleteTextBeforeCursor(beforeLength: Int) {
-        if (DEBUG_BATCH_NESTING) checkBatchEdit()
-
-        if (DebugFlags.DEBUG_ENABLED) {
-            Log.d(TAG, "deleting $beforeLength characters before cursor")
-        }
-
-        val remainingChars = mComposingText.length - beforeLength
-        mPendingInFlightDeletions = minOf(mPendingInFlightDeletions + beforeLength, 32)
-
-        if (remainingChars >= 0) {
-            mComposingText.setLength(remainingChars)
-        } else {
-            mComposingText.setLength(0)
-            val len = max(mCommittedTextBeforeComposingText.length + remainingChars, 0)
-            mCommittedTextBeforeComposingText.setLength(len)
-        }
-
-        if (mExpectedSelStart > beforeLength) {
-            mExpectedSelStart -= beforeLength
-            mExpectedSelEnd -= beforeLength
-        } else {
-            mExpectedSelEnd -= mExpectedSelStart
-            mExpectedSelStart = 0
-        }
-
-        if (isConnected()) {
-            mIC?.deleteSurroundingText(beforeLength, 0)
-        }
-
-        if (DEBUG_PREVIOUS_TEXT) checkConsistencyForDebug()
+        deleteSurroundingText(beforeLength, 0)
     }
 
     fun deleteSurroundingText(beforeLength: Int, afterLength: Int) {
@@ -677,29 +648,50 @@ class RichInputConnection(private val mParent: InputMethodService) : PrivateComm
             Log.d(TAG, "deleting $beforeLength before and $afterLength after cursor")
         }
 
-        val remainingChars = mComposingText.length - beforeLength
         if (beforeLength > 0) {
             mPendingInFlightDeletions = minOf(mPendingInFlightDeletions + beforeLength, 32)
         }
 
-        if (remainingChars >= 0) {
+        if (mComposingText.isNotEmpty()) {
+            val composingDeleteCount = minOf(beforeLength, mComposingText.length)
+            val extraDeleteCount = beforeLength - composingDeleteCount
+            val remainingChars = mComposingText.length - composingDeleteCount
             mComposingText.setLength(remainingChars)
+            if (extraDeleteCount > 0) {
+                val len = max(mCommittedTextBeforeComposingText.length - extraDeleteCount, 0)
+                mCommittedTextBeforeComposingText.setLength(len)
+            }
+            if (mExpectedSelStart > beforeLength) {
+                mExpectedSelStart -= beforeLength
+                mExpectedSelEnd -= beforeLength
+            } else {
+                mExpectedSelEnd -= mExpectedSelStart
+                mExpectedSelStart = 0
+            }
+            if (isConnected()) {
+                if (remainingChars > 0) {
+                    mIC?.setComposingText(mComposingText, 1)
+                } else {
+                    mIC?.commitText("", 1)
+                }
+                if (extraDeleteCount > 0 || afterLength > 0) {
+                    mIC?.deleteSurroundingText(extraDeleteCount, afterLength)
+                }
+            }
         } else {
-            mComposingText.setLength(0)
-            val len = max(mCommittedTextBeforeComposingText.length + remainingChars, 0)
+            val len = max(mCommittedTextBeforeComposingText.length - beforeLength, 0)
             mCommittedTextBeforeComposingText.setLength(len)
-        }
-
-        if (mExpectedSelStart > beforeLength) {
-            mExpectedSelStart -= beforeLength
-            mExpectedSelEnd -= beforeLength
-        } else {
-            mExpectedSelEnd -= mExpectedSelStart
-            mExpectedSelStart = 0
-        }
-
-        if (isConnected()) {
-            mIC?.deleteSurroundingText(beforeLength, afterLength)
+            if (mExpectedSelStart > beforeLength) {
+                mExpectedSelStart -= beforeLength
+                mExpectedSelEnd -= beforeLength
+            } else {
+                mExpectedSelEnd -= mExpectedSelStart
+                mExpectedSelStart = 0
+            }
+            if (isConnected()) {
+                mIC?.finishComposingText()
+                mIC?.deleteSurroundingText(beforeLength, afterLength)
+            }
         }
 
         if (DEBUG_PREVIOUS_TEXT) checkConsistencyForDebug()

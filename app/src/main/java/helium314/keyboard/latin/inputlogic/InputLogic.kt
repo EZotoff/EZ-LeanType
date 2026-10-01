@@ -328,13 +328,15 @@ class InputLogic(
             settingsValues, suggestion, LastComposedWord.COMMIT_TYPE_MANUAL_PICK,
             LastComposedWord.NOT_A_SEPARATOR
         )
+        // Don't allow cancellation of manual pick
+        mLastComposedWord.deactivate()
         if (settingsValues.mAutospaceAfterSuggestion) {
             if (settingsValues.mImmediateAutoSpace) {
                 mConnection.finishComposingText()
                 mConnection.commitText(" ", 1)
                 mConnection.finishComposingText()
                 resetComposingState(false)
-                mSpaceState = SpaceState.DOUBLE
+                mSpaceState = SpaceState.NONE
             } else {
                 mSpaceState = SpaceState.PHANTOM
             }
