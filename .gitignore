@@ -84,6 +84,9 @@ docs/superpowers/
 # AI agent config (personal, not shared)
 .pi/
 
+# Agent harness scratch: build env scripts, release keystore, secrets, logs
+.harness/
+
 # Temporary generated files
 docs/releasenote/release_notes_temp.md
 
