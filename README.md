@@ -151,6 +151,18 @@ LeanType is available in two purpose-built flavors designed to match your exact 
 
 ## 🛠️ Setup Guide
 
+### 0. Required System Settings (after installing the APK)
+
+After installing LeanType, three Android system settings must be switched from their defaults — the installer cannot change them for you:
+
+1. **Enable the keyboard**: **Settings → System → Languages & input → On-screen keyboard** → toggle **LeanType** on.
+2. **Set it as default input method**: **Settings → System → Languages & input → Default keyboard** (or tap the keyboard icon in the notification shade / any text field) → choose **LeanType**. Android resets this to Gboard whenever LeanType is uninstalled, disabled, or updated with a different signature — re-select it if typing suddenly opens Gboard.
+3. **Set the spell checker service** (required for red-underline spell checking to use LeanType's dictionaries): **Settings → System → Languages & input → Advanced / Spell checker** → select **LeanType (Spell Checker)**. By default Android keeps Gboard's spell checker, which does not know LeanType's dictionaries — symptoms are every word of a non-English language (e.g. Russian) being marked as misspelled inside LeanType-suggested text.
+
+Notes:
+- If you update LeanType with an APK signed by a different key (e.g. switching between debug and release builds), Android requires an uninstall first. Back up first: LeanType stores settings in device-protected storage and dictionaries/models in app data, both of which are wiped on uninstall. In-app **Settings → Backup & Restore** covers layouts and settings.
+- LeanType sets `allowBackup="false"` for privacy, so there is no automatic cloud restore for app data.
+
 ### 1. Cloud & Self-Hosted AI Setup (Gemini / Groq / OpenAI / Ollama)
 1. **Cloud API**: Obtain an API key from [Google AI Studio](https://aistudio.google.com/apikey) or [Groq Console](https://console.groq.com/keys).
 2. **Self-Hosted AI**: Run [Ollama](https://ollama.com/), [LM Studio](https://lmstudio.ai/), or [LocalAI](https://localai.io/) on your local network (e.g. `http://192.168.1.100:11434/v1`).
