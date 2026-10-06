@@ -15,7 +15,7 @@ import helium314.keyboard.latin.utils.SubtypeSettings
 
 import helium314.keyboard.latin.work.PluginWorkerFactory
 
-class App : Application(), Configuration.Provider {
+open class App : Application(), Configuration.Provider {
 
     // WorkManager Configuration.Provider — required for dynamic plugins (ML Kit Digital Ink & Translation).
     override val workManagerConfiguration: Configuration

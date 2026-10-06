@@ -115,7 +115,12 @@ open class SettingsValues(
     val mShowMorePopupKeys: String
     val mPopupKeyTypes: List<String>
     val mPopupKeyLabelSources: List<String>
-    val mSecondaryLocales: List<Locale>
+    // Backing field + open getter: tests subclass-mock SettingsValues and
+    // stub this getter (the property is assigned in init, so it can't be a
+    // directly-open val).
+    private var mSecondaryLocalesBackingField: List<Locale> = emptyList()
+    open val mSecondaryLocales: List<Locale>
+        get() = mSecondaryLocalesBackingField
     val mBigramPredictionEnabled: Boolean
     val mFirstWordPredictionEnabled: Boolean
     val mSuggestPunctuation: Boolean
@@ -394,7 +399,7 @@ open class SettingsValues(
             val extraScale = Settings.readOneHandedModeScale(prefs, isLandscape, mIsSplitKeyboardEnabled)
             1f - (1f - baseScale) * extraScale
         } else 1f
-        mSecondaryLocales = getSecondaryLocales(selectedSubtype.extraValue)
+        mSecondaryLocalesBackingField = getSecondaryLocales(selectedSubtype.extraValue)
         mShowMorePopupKeys = if (selectedSubtype.isAsciiCapable) getMoreKeys(selectedSubtype, prefs) else POPUP_KEYS_NORMAL
         mColors = KeyboardTheme.getColorsForCurrentTheme(context)
         mPopupKeyTypes = getPopupKeyTypes(selectedSubtype, prefs)

@@ -20,7 +20,7 @@ import java.util.Objects
 /**
  * Unique identifier for each keyboard type.
  */
-class KeyboardId(elementId: Int, params: KeyboardLayoutSet.Params) {
+open class KeyboardId(elementId: Int, params: KeyboardLayoutSet.Params) {
     val mSubtype: RichInputMethodSubtype = params.mSubtype
     val mWidth: Int = params.mKeyboardWidth
     val mHeight: Int = params.mKeyboardHeight
@@ -67,7 +67,7 @@ class KeyboardId(elementId: Int, params: KeyboardLayoutSet.Params) {
     val isAlphaOrSymbolKeyboard: Boolean
         get() = mElementId <= ELEMENT_SYMBOLS_SHIFTED
 
-    val isAlphabetKeyboard: Boolean
+    open val isAlphabetKeyboard: Boolean
         get() = isAlphabetKeyboard(mElementId)
 
     val isHexagonal: Boolean

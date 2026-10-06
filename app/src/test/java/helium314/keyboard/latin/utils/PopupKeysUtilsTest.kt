@@ -22,7 +22,7 @@ class PopupKeysUtilsTest {
         val field = Settings::class.java.getDeclaredField("mSettingsValues")
         field.isAccessible = true
         val mockValues = Mockito.mock(SettingsValues::class.java)
-        Mockito.`when`(mockValues.mSecondaryLocales).thenReturn(emptyList())
+        Mockito.doReturn(mutableListOf<Locale>()).`when`(mockValues).mSecondaryLocales
         field.set(Settings.getInstance(), mockValues)
     }
 
@@ -36,7 +36,7 @@ class PopupKeysUtilsTest {
     private fun createTestParams(): KeyboardParams {
         val params = KeyboardParams()
         val mockId = Mockito.mock(KeyboardId::class.java)
-        Mockito.`when`(mockId.isAlphabetKeyboard).thenReturn(true)
+        Mockito.doReturn(true).`when`(mockId).isAlphabetKeyboard
         params.mId = mockId
         params.mLocaleKeyboardInfos = LocaleKeyboardInfos(null, Locale("ru"))
         return params

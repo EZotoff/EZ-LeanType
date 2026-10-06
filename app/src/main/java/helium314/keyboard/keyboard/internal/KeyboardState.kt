@@ -699,9 +699,15 @@ class KeyboardState(private val switchActions: SwitchActions) {
             else -> {}
         }
 
+        // The previous letter already consumed the one-shot automatic shift.
+        // Force caps mode off here: on fast taps the cached text can still
+        // report "start of sentence", which would re-arm auto caps and
+        // capitalize the second letter of the word (e.g. "HEllo").
         if (Constants.isLetterCode(code)) {
             // If the code is a letter, update keyboard shift state.
-            updateAlphabetShiftState(autoCapsFlags, recapitalizeMode)
+            val effectiveAutoCapsFlags =
+                if (alphabetShiftState.isAutomaticShifted) Constants.TextUtils.CAP_MODE_OFF else autoCapsFlags
+            updateAlphabetShiftState(effectiveAutoCapsFlags, recapitalizeMode)
         } else when (code) {
             KeyCode.EMOJI -> setEmojiKeyboard()
             KeyCode.ALPHA -> {

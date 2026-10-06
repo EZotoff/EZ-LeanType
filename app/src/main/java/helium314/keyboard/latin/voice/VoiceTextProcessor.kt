@@ -19,9 +19,13 @@ object VoiceTextProcessor {
         data class Text(val value: String, val isTerminal: Boolean) : Result()
     }
 
-    // Pre-compile regex patterns at the object level to avoid main-thread allocations
+    // Pre-compile regex patterns at the object level to avoid main-thread allocations.
+    // NOTE: no lookbehind here — Android's ICU regex engine (com.android.icu.util.regex)
+    // fails to compile lookbehind on some builds and throws PatternSyntaxException during
+    // <clinit>, which surfaces as ExceptionInInitializerError and kills the app (4.2.7 crash).
+    // Use an optional leading space in the pattern instead, and re-emit it in the replacement.
     private val PUNCT_REGEX = Regex(
-        """(?<!\S)(question mark|exclamation mark|exclamation point|full stop|period|comma|semicolon|colon|вопросительный знак|восклицательный знак|точка с запятой|точка|запятая|двоеточие)(?!\S)""",
+        """( |^)(question mark|exclamation mark|exclamation point|full stop|period|comma|semicolon|colon|вопросительный знак|восклицательный знак|точка с запятой|точка|запятая|двоеточие)(?= |$)""",
         RegexOption.IGNORE_CASE
     )
     private val SPACE_BEFORE_PUNCT = Regex("""\s+([,;.!?])""")
@@ -66,7 +70,8 @@ object VoiceTextProcessor {
         return try {
             var text = raw.trim()
             text = PUNCT_REGEX.replace(text) { match ->
-                PUNCT_MAP[match.value.lowercase(Locale.ROOT)] ?: match.value
+                val separator = if (match.groupValues[1] == " ") " " else ""
+                separator + (PUNCT_MAP[match.groupValues[2].lowercase(Locale.ROOT)] ?: match.groupValues[2])
             }
             text.replace(SPACE_BEFORE_PUNCT, "$1").replace(SPACE_AFTER_PUNCT, "$1 ")
         } catch (_: Throwable) {

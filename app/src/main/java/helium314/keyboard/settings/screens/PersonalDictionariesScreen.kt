@@ -69,6 +69,7 @@ fun PersonalDictionariesScreen(
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
             UserDictionaryUtils.migrateMisattributedCyrillicWords(ctx.contentResolver)
+            UserDictionaryUtils.collapseLocalesToLanguageOnly(ctx.contentResolver)
         }
     }
     val locales: MutableList<Locale?> = getSortedDictionaryLocales().toMutableList()
@@ -258,11 +259,15 @@ private fun parseAndInsert(context: android.content.Context, reader: BufferedRea
 fun getSortedDictionaryLocales(): TreeSet<Locale> {
     val sortedLocales = sortedSetOf<Locale>(compareBy { it.toLanguageTag().lowercase() })
 
+    // Language-only canonical map for collapsing country variants
+    fun Locale.canonical(): Locale = if (country.isEmpty()) this else Locale(language)
+    fun TreeSet<Locale>.addCanonical(locale: Locale) = add(locale.canonical())
+
     // Add the main language selected in the "Language and Layouts" setting except "No language"
     for (mainSubtype in getEnabledSubtypes(true)) {
         val mainLocale = mainSubtype.locale()
         if (mainLocale.toLanguageTag() != SubtypeLocaleUtils.NO_LANGUAGE) {
-            sortedLocales.add(mainLocale)
+            sortedLocales.addCanonical(mainLocale)
         }
         // Secondary language is added only if main language is selected
         val enabled = getEnabledSubtypes(false)
@@ -273,23 +278,12 @@ fun getSortedDictionaryLocales(): TreeSet<Locale> {
 
     val systemLocales = getSystemLocales()
     for (sysLocale in systemLocales) {
-        val alreadyCovered = sortedLocales.any { existing ->
-            existing.language == sysLocale.language && (
-                existing.language == "ru" ||
-                existing.country.isEmpty() ||
-                existing.country.equals(sysLocale.country, ignoreCase = true)
-            )
-        }
+        val alreadyCovered = sortedLocales.any { existing -> existing.language == sysLocale.language }
         if (!alreadyCovered) {
-            sortedLocales.add(sysLocale)
+            sortedLocales.addCanonical(sysLocale)
         }
     }
 
-    // Collapse Russian country variants (ru_RU, etc.) into canonical Locale("ru")
-    if (sortedLocales.any { it.language == "ru" }) {
-        sortedLocales.removeAll { it.language == "ru" && it.country.isNotEmpty() }
-        sortedLocales.add(Locale("ru"))
-    }
     return sortedLocales
 }
 

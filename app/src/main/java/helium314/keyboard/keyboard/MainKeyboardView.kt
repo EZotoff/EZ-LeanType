@@ -37,7 +37,7 @@ import helium314.keyboard.latin.utils.*
 import java.util.Locale
 import java.util.WeakHashMap
 
-class MainKeyboardView @JvmOverloads constructor(
+open class MainKeyboardView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyle: Int = R.attr.mainKeyboardViewStyle
@@ -180,7 +180,7 @@ class MainKeyboardView @JvmOverloads constructor(
         }
     }
 
-    fun setKeyPreviewPopupEnabled(previewEnabled: Boolean) { mKeyPreviewDrawParams.setPopupEnabled(previewEnabled) }
+    open fun setKeyPreviewPopupEnabled(previewEnabled: Boolean) { mKeyPreviewDrawParams.setPopupEnabled(previewEnabled) }
     
     private fun locatePreviewPlacerView() {
         getLocationInWindow(mOriginCoords)
@@ -225,7 +225,7 @@ class MainKeyboardView @JvmOverloads constructor(
         if (isHardwareAccelerated) mKeyPreviewChoreographer.dismissKeyPreview(key) else dismissKeyPreviewWithoutDelay(key)
     }
 
-    fun setSlidingKeyInputPreviewEnabled(enabled: Boolean) { mSlidingKeyInputDrawingPreview.setPreviewEnabled(enabled) }
+    open fun setSlidingKeyInputPreviewEnabled(enabled: Boolean) { mSlidingKeyInputDrawingPreview.setPreviewEnabled(enabled) }
 
     override fun showSlidingKeyInputPreview(tracker: PointerTracker?) {
         locatePreviewPlacerView()
@@ -251,9 +251,9 @@ class MainKeyboardView @JvmOverloads constructor(
         mGestureTrailsDrawingPreview.setPreviewPosition(tracker)
     }
 
-    fun setMainDictionaryAvailability(mainDictionaryAvailable: Boolean) { PointerTracker.setMainDictionaryAvailability(mainDictionaryAvailable) }
+    open fun setMainDictionaryAvailability(mainDictionaryAvailable: Boolean) { PointerTracker.setMainDictionaryAvailability(mainDictionaryAvailable) }
 
-    fun setGestureHandlingEnabledByUser(isGestureHandlingEnabledByUser: Boolean, isGestureTrailEnabled: Boolean, isGestureFloatingPreviewTextEnabled: Boolean) {
+    open fun setGestureHandlingEnabledByUser(isGestureHandlingEnabledByUser: Boolean, isGestureTrailEnabled: Boolean, isGestureFloatingPreviewTextEnabled: Boolean) {
         PointerTracker.setGestureHandlingEnabledByUser(isGestureHandlingEnabledByUser)
         setGesturePreviewMode(isGestureHandlingEnabledByUser && isGestureTrailEnabled, isGestureHandlingEnabledByUser && isGestureFloatingPreviewTextEnabled)
     }
@@ -335,7 +335,7 @@ class MainKeyboardView @JvmOverloads constructor(
     }
 
     fun dismissAllKeyPreviews() { mKeyPreviewChoreographer.clear(); mDrawingPreviewPlacerView.removeAllViews() }
-    fun cancelAllOngoingEvents() {
+    open fun cancelAllOngoingEvents() {
         mTimerHandler.cancelAllMessages()
         PointerTracker.setReleasedKeyGraphicsToAllKeys()
         mGestureFloatingTextDrawingPreview.dismissGestureFloatingPreviewText()
@@ -351,7 +351,7 @@ class MainKeyboardView @JvmOverloads constructor(
         PointerTracker.cancelAllPointerTrackers()
     }
 
-    fun closing() { cancelAllOngoingEvents(); mPopupKeysKeyboardCache.clear() }
+    open fun closing() { cancelAllOngoingEvents(); mPopupKeysKeyboardCache.clear() }
 
     fun onHideWindow() {
         onDismissPopupKeysPanel()

@@ -1122,6 +1122,15 @@ class LatinIME : InputMethodService(),
     }
 
     override fun updateFullscreenMode() {
+        // On some Android versions (observed on Android 16) the DecorView may not be attached
+        // when the system requests a hide / re-configure while settings open, and
+        // InputMethodService.onConfigureWindow then crashes with
+        // "IllegalArgumentException: View ... not attached to window manager".
+        // Skip the update until the window is attached; it will be re-run on attach.
+        if (window?.window?.decorView?.isAttachedToWindow != true) {
+            Log.i(TAG, "updateFullscreenMode skipped: window not attached")
+            return
+        }
         super.updateFullscreenMode()
         if (isFullscreenMode) {
             floatingKeyboardManager?.onStartExtractMode()

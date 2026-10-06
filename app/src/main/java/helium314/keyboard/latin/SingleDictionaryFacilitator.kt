@@ -17,7 +17,7 @@ import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 /** Simple DictionaryFacilitator for a single Dictionary. Has some optional special purpose functionality. */
-class SingleDictionaryFacilitator(private val dict: Dictionary) : DictionaryFacilitator {
+open class SingleDictionaryFacilitator(private val dict: Dictionary) : DictionaryFacilitator {
     var suggestionLogger: SuggestionLogger? = null
 
     /**

@@ -200,6 +200,7 @@ class DictionaryFacilitatorImpl : DictionaryFacilitator {
             sessionWordBoost = SessionWordBoost.getInstance(context)
         }
         UserDictionaryUtils.migrateMisattributedCyrillicWords(context.contentResolver)
+        UserDictionaryUtils.collapseLocalesToLanguageOnly(context.contentResolver)
 
         val locales = getUsedLocales(newLocale, context)
 
@@ -519,18 +520,21 @@ class DictionaryFacilitatorImpl : DictionaryFacilitator {
 
         val threshold = Settings.getValues().mAddToPersonalDictThreshold
         val boost = sessionWordBoost ?: mContext?.let { SessionWordBoost.getInstance(it).also { b -> sessionWordBoost = b } }
-        val count = boost?.getCount(wordToUse) ?: 1
+        val count = boost?.getCount(wordToUse) ?: 0
+        if (count <= 0) return // never counted, never auto-add
         val canAdd = count >= threshold
 
         if (canAdd) {
             scope.launch {
                 runCatching {
-                    val localeToUse = if (dictionaryGroup.locale.language.isNullOrEmpty()) {
-                        null
-                    } else if (dictionaryGroup.locale.language == "ru") {
-                        Locale("ru")
-                    } else {
-                        dictionaryGroup.locale
+                    // Use a language-only locale (e.g. "en" for en_US/en_GB) so manual
+                    // adds (tagged with the device locale by the system spell checker)
+                    // and auto-remembered words land in the same single dictionary.
+                    val language = dictionaryGroup.locale.language
+                    val localeToUse = when {
+                        language.isNullOrEmpty() -> null
+                        language == "ru" -> Locale("ru")
+                        else -> Locale(language)
                     }
                     UserDictionary.Words.addWord(userDict.mContext, wordToUse, 250, null, localeToUse)
                     userDict.addUnigramEntry(wordToUse, 250, null, 0, false, false, (System.currentTimeMillis() / 1000).toInt())

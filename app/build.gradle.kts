@@ -180,6 +180,9 @@ android {
     testOptions {
         unitTests {
             isIncludeAndroidResources = true
+            // Mockito's inline mock-maker self-attaches a javaagent; without
+            // this flag the forked test JVMs fail with "MockMaker (alternate: null)".
+            all { it.jvmArgs("-Djdk.attach.allowAttachSelf=true") }
         }
     }
 
@@ -261,6 +264,32 @@ dependencies {
     testImplementation("org.robolectric:robolectric:4.14.1")
     testImplementation("androidx.test:runner:1.6.2")
     testImplementation("androidx.test:core:1.6.1")
+
+    // Robolectric has no linux-aarch64 nativeruntime upstream. On arm64 hosts,
+    // substitute the nativeruntime module with an arm64 rebuild published in a
+    // local maven repo (see .harness/). Built from upstream nativeruntime jar +
+    // linux/aarch64 native slice + a ServiceLoader-registered loader that
+    // accepts linux+aarch64. No effect on x86_64 CI machines.
+    // Repo location: -ProbolectricArm64Repo=<path> or ROBOLECTRIC_ARM64_REPO.
+    val onArm64 = System.getProperty("os.arch") == "aarch64"
+    if (onArm64) {
+        val arm64Repo = (project.findProperty("robolectricArm64Repo") as String?)
+            ?: System.getenv("ROBOLECTRIC_ARM64_REPO")
+            ?: "/data/local/tmp/androidharness-scratch/local-maven"
+        repositories {
+            maven { url = uri(arm64Repo) }
+        }
+        configurations.matching { it.name.endsWith("UnitTestRuntimeClasspath") }.all {
+            resolutionStrategy.dependencySubstitution {
+                substitute(module("org.robolectric:nativeruntime"))
+                    .using(module("com.seekrtech:robolectric-nativeruntime-arm64:4.14.1"))
+                    .because("upstream Robolectric ships no linux-aarch64 nativeruntime")
+                substitute(module("org.robolectric:nativeruntime-dist-compat"))
+                    .using(module("com.seekrtech:robolectric-nativeruntime-arm64:4.14.1"))
+                    .because("upstream Robolectric ships no linux-aarch64 nativeruntime")
+            }
+        }
+    }
 }
 dependencies {
     testImplementation("androidx.test.ext:junit:1.1.5")
