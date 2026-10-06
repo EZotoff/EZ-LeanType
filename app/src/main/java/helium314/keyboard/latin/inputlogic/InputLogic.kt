@@ -867,10 +867,26 @@ class InputLogic(
                     KeyCode.keyCodeToKeyEventCode(keyCode)
                 }
                 if (keyEventCode != KeyEvent.KEYCODE_UNKNOWN) {
-                    if (mWordComposer.isComposingWord() && isNavigationOrDpadKey(keyEventCode)) {
-                        mConnection.finishComposingText()
-                        StatsUtils.onWordCommitUserTyped(mWordComposer.getTypedWord(), mWordComposer.isBatchMode())
-                        resetComposingState(true)
+                    if (isNavigationOrDpadKey(keyEventCode)) {
+                        if (mWordComposer.isComposingWord()) {
+                            mConnection.finishComposingText()
+                            StatsUtils.onWordCommitUserTyped(mWordComposer.getTypedWord(), mWordComposer.isBatchMode())
+                            resetComposingState(true)
+                        }
+                        // Horizontal dpad movement is done with setSelection instead of sending a
+                        // key event: some editors race the key event against the just-finished
+                        // composing region (its selection update can eat the movement), which made
+                        // every other arrow tap only clear the underline without moving the cursor.
+                        if ((keyEventCode == KeyEvent.KEYCODE_DPAD_LEFT || keyEventCode == KeyEvent.KEYCODE_DPAD_RIGHT)
+                            && mConnection.isCursorPositionKnown() && !mConnection.hasSelection()
+                        ) {
+                            val delta = if (keyEventCode == KeyEvent.KEYCODE_DPAD_LEFT) -1 else 1
+                            val target = mConnection.expectedSelectionStart + delta
+                            if (target >= 0) {
+                                mConnection.setSelection(target, target)
+                                return
+                            }
+                        }
                     }
                     sendDownUpKeyEventWithMetaState(keyEventCode, event.metaState)
                     return

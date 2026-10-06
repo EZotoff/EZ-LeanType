@@ -729,6 +729,66 @@ class InputLogicTest {
         assertEquals("hello wor", text)
     }
 
+    @Test fun `arrow left moves cursor every tap while word underlined`() {
+        // Regression: sending a DPAD key event raced the composing-region teardown, so every
+        // other tap only cleared the underline without moving the cursor.
+        reset()
+        chainInput("hello world")
+        setCursorPosition(11)
+        functionalKeyPress(KeyCode.ARROW_LEFT)
+        assertEquals(10, selectionStart)
+        functionalKeyPress(KeyCode.ARROW_LEFT)
+        assertEquals(9, selectionStart)
+        functionalKeyPress(KeyCode.ARROW_LEFT)
+        assertEquals(8, selectionStart)
+    }
+
+    @Test fun `arrow right from inside composed word moves cursor without eating underline`() {
+        reset()
+        chainInput("hello")
+        setCursorPosition(3)
+        functionalKeyPress(KeyCode.ARROW_RIGHT)
+        assertEquals(4, selectionStart)
+        functionalKeyPress(KeyCode.ARROW_RIGHT)
+        assertEquals(5, selectionStart)
+    }
+
+    @Test fun `composing region never includes space before word after suggestion pick and backspace`() {
+        // Regression: after suggestion pick, restartSuggestionsOnWordTouchedByCursor could set a
+        // composing region that starts one char early, covering the space before the word.
+        // Then backspace trims the composing span instead of deleting the last letter, and a
+        // second backspace deletes the space itself.
+        reset()
+        chainInput("hello ")
+        pickSuggestion("world")
+        assertEquals("hello world", text)
+        // simulate the app reporting the selection back after the commit, as a real editor does
+        latinIME.onUpdateSelection(6, 6, 11, 11, -1, -1)
+        functionalKeyPress(KeyCode.DELETE)
+        assertEquals("hello worl", text)
+        functionalKeyPress(KeyCode.DELETE)
+        assertEquals("hello wor", text)
+        assertEquals("wor", composingText)
+    }
+
+    @Test fun `backspace after autocorrect deletes letters not preceding space`() {
+        reset()
+        setInputType(InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_AUTO_CORRECT)
+        chainInput("hullo")
+        getAutocorrectedWithSpaceAfter("hello", "hullo")
+        assertEquals("hello ", text)
+        // editor reports selection after autocorrect commit; composing span must not cover the space
+        latinIME.onUpdateSelection(0, 0, 6, 6, -1, -1)
+        functionalKeyPress(KeyCode.DELETE)
+        // default setting reverts autocorrect back to the typed word (separator consumed with it)
+        assertEquals("hullo", text)
+        // from here on, backspace must delete letters, never the space before "hullo"
+        functionalKeyPress(KeyCode.DELETE)
+        assertEquals("hull", text)
+        functionalKeyPress(KeyCode.DELETE)
+        assertEquals("hul", text)
+    }
+
     @Test fun testBackspaceAfterSuggestionImmediate() {
         reset()
         latinIME.prefs().edit { putBoolean(Settings.PREF_IMMEDIATE_AUTO_SPACE, true) }

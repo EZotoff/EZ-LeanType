@@ -784,10 +784,43 @@ class RichInputConnection(private val mParent: InputMethodService) : PrivateComm
         if (DEBUG_BATCH_NESTING) checkBatchEdit()
         if (DEBUG_PREVIOUS_TEXT) checkConsistencyForDebug()
 
-        val moveBy = mExpectedSelStart - start
+        // Guard against a stale (behind) cursor cache: if the region we are about to mark as
+        // composing starts with word separator(s) (e.g. a space), the cursor cache is off and
+        // the region covers the space before the word. Shift start forward so the underline
+        // covers the word only, and backspace can never trim the preceding space through the
+        // composing-span path of deleteSurroundingText.
+        var fixedStart = start
+        if (start > 0 && start < end) {
+            val spacingAndPunctuations = Settings.getValues().mSpacingAndPunctuations
+            val before = getTextBeforeCursor(
+                Constants.EDITOR_CONTENTS_CACHE_SIZE + (end - start),
+                0
+            )
+            val regionStartInBefore = before?.length?.minus(mExpectedSelStart - start)
+            if (before != null && regionStartInBefore != null && regionStartInBefore in 0 until before.length) {
+                var shift = 0
+                while (regionStartInBefore + shift < before.length &&
+                    spacingAndPunctuations.isWordSeparator(before[regionStartInBefore + shift].code)
+                ) {
+                    shift++
+                }
+                if (shift > 0 && regionStartInBefore + shift <= before.length) {
+                    Log.w(TAG, "setComposingRegion: composing region started on separator(s), shifting start by $shift")
+                    fixedStart = start + shift
+                }
+            }
+        }
+        // fix the cache too, so the composing text computed below does not include the separators
+        if (fixedStart != start && mExpectedSelStart in start until fixedStart) {
+            mCommittedTextBeforeComposingText.setLength(mCommittedTextBeforeComposingText.length - (fixedStart - start))
+            mExpectedSelStart = fixedStart
+            mExpectedSelEnd = fixedStart
+        }
+
+        val moveBy = mExpectedSelStart - fixedStart
 
         val textBeforeCursor = getTextBeforeCursor(
-            Constants.EDITOR_CONTENTS_CACHE_SIZE + (end - start),
+            Constants.EDITOR_CONTENTS_CACHE_SIZE + (end - fixedStart),
             0
         )
 
@@ -795,7 +828,10 @@ class RichInputConnection(private val mParent: InputMethodService) : PrivateComm
         mComposingText.setLength(0)
 
         textBeforeCursor?.let { text ->
-            val indexOfStartOfComposingText = max(text.length - moveBy, 0)
+            // Clamp to [0, text.length]: a stale mExpectedSelStart can make moveBy negative,
+            // which would otherwise push the start index past the end of the text and throw
+            // StringIndexOutOfBoundsException (seen on web editors reclaiming a composing region).
+            val indexOfStartOfComposingText = (text.length - moveBy).coerceIn(0, text.length)
 
             mComposingText.append(
                 text.subSequence(indexOfStartOfComposingText, text.length)
@@ -807,7 +843,7 @@ class RichInputConnection(private val mParent: InputMethodService) : PrivateComm
         }
 
         return if (isConnected()) {
-            mIC?.setComposingRegion(start, end) ?: false
+            mIC?.setComposingRegion(fixedStart, end) ?: false
         } else {
             false
         }
