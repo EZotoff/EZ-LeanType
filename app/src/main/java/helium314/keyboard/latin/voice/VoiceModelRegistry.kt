@@ -91,10 +91,10 @@ object VoiceModelRegistry {
             language = "English",
             languageCode = "en",
             sizeMb = "690 MB",
-            downloadUrl = "https://huggingface.co/tiyuvta/Phonon-2-ONNX/resolve/main/encoder-model.int8.onnx",
+            downloadUrl = "https://github.com/EZotoff/EZ-LeanType/releases/download/v4.2.9/phonon-2-onnx-int8.zip",
             backupDownloadUrl = "",
-            browserUrl = "https://huggingface.co/tiyuvta/Phonon-2-ONNX",
-            description = "Fermion Phonon-2 (CC-BY-4.0), int8 ONNX export: 5.21% WER English ASR. Runs on onnxruntime. Note: the full set needs preprocessor-model.onnx, encoder-model.int8.onnx, decoder_joint-model.int8.onnx and vocab.txt from the export repo (zip them together for import)."
+            browserUrl = "https://github.com/EZotoff/EZ-LeanType/releases/download/v4.2.9/phonon-2-onnx-int8.zip",
+            description = "Fermion Phonon-2 (CC-BY-4.0), int8 ONNX export: 5.21% WER English ASR with punctuation and casing, ~16x realtime on device. Runs on the bundled onnxruntime engine."
         )
     )
 

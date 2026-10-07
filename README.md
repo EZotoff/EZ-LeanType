@@ -179,15 +179,15 @@ LeanType features built-in on-device STT without needing a companion voice plugi
 | Model | Language & Target | Size | Direct Download Links |
 | :--- | :--- | :---: | :--- |
 | **GigaAM v3 E2E RNN-T (INT8)** | **Russian (SOTA)**<br>Native punctuation & capitalization, 8.4% WER | **205 MB** | [📥 **Download `gigaam-v3-e2e-rnnt.zip`**](https://github.com/EZotoff/EZ-LeanType/releases/download/v4.2.7/gigaam-v3-e2e-rnnt.zip)<br>• [Hugging Face Source (`pantinor/gigaam-v3`)](https://huggingface.co/pantinor/gigaam-v3) |
-| **Phonon-2 (int8 ONNX)** | **English**<br>5.21% WER, punctuated and cased output, ~16x realtime | **690 MB** | [📥 **Phonon-2-ONNX export**](https://huggingface.co/tiyuvta/Phonon-2-ONNX) — zip `preprocessor-model.onnx`, `encoder-model.int8.onnx`, `decoder_joint-model.int8.onnx` and `vocab.txt` together, then Import |
+| **Phonon-2 (int8 ONNX)** | **English**<br>5.21% WER, punctuated and cased output, ~16x realtime | **690 MB** | [📥 **Download `phonon-2-onnx-int8.zip`**](https://github.com/EZotoff/EZ-LeanType/releases/download/v4.2.9/phonon-2-onnx-int8.zip)<br>• [Hugging Face source (`tiyuvta/Phonon-2-ONNX`)](https://huggingface.co/tiyuvta/Phonon-2-ONNX) |
 | **Whisper Small (Recommended)** | **Multilingual (99+ languages)**<br>Balanced accuracy & speed | **182 MB** | [📥 **Download `ggml-small-q5_1.bin`**](https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small-q5_1.bin) |
 | **Whisper Large-v3-Turbo** | **Multilingual (99+ languages)**<br>Highest accuracy Whisper | **548 MB** | [📥 **Download `ggml-large-v3-turbo-q5_0.bin`**](https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo-q5_0.bin) |
 | **Whisper Tiny** | **Multilingual (99+ languages)**<br>Ultra-lightweight (~100ms) | **32 MB** | [📥 **Download `ggml-tiny-q5_1.bin`**](https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny-q5_1.bin) |
 
 #### 📥 Installation & Setup Instructions
-1. **Install EZ LeanType APK**: Install [`EZ-LeanType-v4.2.8-debug.apk`](https://github.com/EZotoff/EZ-LeanType/releases/download/v4.2.8/EZ-LeanType-v4.2.8-debug.apk) on your Android device.
+1. **Install EZ LeanType APK**: Install [`EZ-LeanType-v4.2.9-debug.apk`](https://github.com/EZotoff/EZ-LeanType/releases/download/v4.2.9/EZ-LeanType-v4.2.9-debug.apk) on your Android device.
 2. **Grant Microphone Permission**: Enable microphone access when prompted (or via Android Settings → Apps → EZ LeanType → Permissions → Microphone).
-3. **Download Model Archive**: Download either [**`gigaam-v3-e2e-rnnt.zip`**](https://github.com/EZotoff/EZ-LeanType/releases/download/v4.2.7/gigaam-v3-e2e-rnnt.zip) (for Russian), a zipped Phonon-2 ONNX export (for English, see table above), or a Whisper `.bin` file from the table above.
+3. **Download Model Archive**: Download either [**`gigaam-v3-e2e-rnnt.zip`**](https://github.com/EZotoff/EZ-LeanType/releases/download/v4.2.7/gigaam-v3-e2e-rnnt.zip) (for Russian), [**`phonon-2-onnx-int8.zip`**](https://github.com/EZotoff/EZ-LeanType/releases/download/v4.2.9/phonon-2-onnx-int8.zip) (for English), or a Whisper `.bin` file from the table above.
 4. **Import Model in EZ LeanType**:
    - Open EZ LeanType **Settings → Voice typing → Manage & Download Models**.
    - Under **Custom Model**, tap **Import File**.
