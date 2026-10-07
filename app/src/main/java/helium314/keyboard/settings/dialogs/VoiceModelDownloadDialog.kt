@@ -40,7 +40,6 @@ fun VoiceModelDownloadDialog(
     pluginManager: VoicePluginManager,
     gigaamState: ModelState? = null,
     whisperState: ModelState?,
-    parakeetState: ModelState? = null,
     phononState: ModelState? = null,
     voskState: ModelState? = null,
     onRefresh: () -> Unit,
@@ -52,14 +51,12 @@ fun VoiceModelDownloadDialog(
 
     val installedGigaAmId = prefs.getString("installed_model_${VoiceConstants.ENGINE_GIGAAM}", null)
     val installedWhisperId = prefs.getString("installed_model_${VoiceConstants.ENGINE_WHISPER}", null)
-    val installedParakeetId = prefs.getString("installed_model_${VoiceConstants.ENGINE_PARAKEET}", null)
     val installedPhononId = prefs.getString("installed_model_${VoiceConstants.ENGINE_PHONON}", null)
     val activeDownloadingId = VoiceDownloadDispatcher.downloadingModelId.value
     val currentProgress = VoiceDownloadDispatcher.downloadProgress.floatValue
 
     val isGigaAmInstalled = gigaamState?.state == ModelState.STATE_READY
     val isWhisperInstalled = whisperState?.state == ModelState.STATE_READY
-    val isParakeetInstalled = parakeetState?.state == ModelState.STATE_READY
     val isPhononInstalled = phononState?.state == ModelState.STATE_READY
     val matchedPredefinedModel = VoiceModelRegistry.whisperModels.any { it.id == installedWhisperId }
 
@@ -179,164 +176,6 @@ fun VoiceModelDownloadDialog(
                     }
 
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                }
-
-                if (VoiceModelRegistry.parakeetModels.isNotEmpty()) {
-                    Text(
-                        text = "Parakeet TDT v3 (FastConformer Streaming)",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)
-                    )
-
-                    for (model in VoiceModelRegistry.parakeetModels) {
-                        val isThisModelInstalled = isParakeetInstalled && installedParakeetId == model.id
-                        val isThisModelDownloading = activeDownloadingId == model.id
-
-                        ModelDownloadRow(
-                            model = model,
-                            isThisModelInstalled = isThisModelInstalled,
-                            isThisModelDownloading = isThisModelDownloading,
-                            isAnyModelDownloading = activeDownloadingId != null,
-                            downloadProgress = currentProgress,
-                            isAnyModelInstalledForEngine = isParakeetInstalled,
-                            onDownload = {
-                                scope.launch {
-                                    VoiceDownloadDispatcher.downloadAndInstall(
-                                        context = context,
-                                        model = model,
-                                        pluginManager = pluginManager,
-                                        onSuccess = {
-                                            prefs.edit().putString("installed_model_${VoiceConstants.ENGINE_PARAKEET}", model.id).apply()
-                                            onRefresh()
-                                        },
-                                        onError = { err ->
-                                            Toast.makeText(context, err, Toast.LENGTH_LONG).show()
-                                        }
-                                    )
-                                }
-                            },
-                            onDelete = {
-                                prefs.edit().remove("installed_model_${VoiceConstants.ENGINE_PARAKEET}").apply()
-                                pluginManager.deleteModel(VoiceConstants.ENGINE_PARAKEET)
-                                Toast.makeText(context, "${model.displayName} model removed", Toast.LENGTH_SHORT).show()
-                                onRefresh()
-                            }
-                        )
-                    }
-
-                    // Custom Parakeet Model Option
-                    val isCustomParakeetInstalled = isParakeetInstalled && (installedParakeetId == "custom" || !VoiceModelRegistry.parakeetModels.any { it.id == installedParakeetId })
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 6.dp, horizontal = 4.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = if (isCustomParakeetInstalled && installedParakeetId == null)
-                                    "Loaded External Model"
-                                else
-                                    "Custom Parakeet Model",
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Medium
-                            )
-                            Text(
-                                text = if (isCustomParakeetInstalled) "Imported & Ready" else "Load external .zip file",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = if (isCustomParakeetInstalled)
-                                    MaterialTheme.colorScheme.primary
-                                else
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-
-                        if (isCustomParakeetInstalled) {
-                            Button(
-                                onClick = {
-                                    prefs.edit().remove("installed_model_${VoiceConstants.ENGINE_PARAKEET}").apply()
-                                    pluginManager.deleteModel(VoiceConstants.ENGINE_PARAKEET)
-                                    Toast.makeText(context, "Custom Parakeet model removed", Toast.LENGTH_SHORT).show()
-                                    onRefresh()
-                                },
-                                enabled = activeDownloadingId == null,
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.errorContainer,
-                                    contentColor = MaterialTheme.colorScheme.onErrorContainer
-                                ),
-                                modifier = Modifier.height(36.dp)
-                            ) {
-                                Text("Delete")
-                            }
-                        } else {
-                            OutlinedButton(
-                                onClick = { onImportLocalFile(VoiceConstants.ENGINE_PARAKEET) },
-                                enabled = activeDownloadingId == null,
-                                modifier = Modifier.height(36.dp)
-                            ) {
-                                Text("Import")
-                            }
-                        }
-                    }
-
-                    HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 8.dp),
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                    )
-                }
-
-                if (VoiceModelRegistry.phononModels.isNotEmpty()) {
-                    Text(
-                        text = "Phonon-2 (English, High Accuracy, onnxruntime)",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)
-                    )
-
-                    for (model in VoiceModelRegistry.phononModels) {
-                        val isThisModelInstalled = isPhononInstalled && installedPhononId == model.id
-                        val isThisModelDownloading = activeDownloadingId == model.id
-
-                        ModelDownloadRow(
-                            model = model,
-                            isThisModelInstalled = isThisModelInstalled,
-                            isThisModelDownloading = isThisModelDownloading,
-                            isAnyModelDownloading = activeDownloadingId != null,
-                            downloadProgress = currentProgress,
-                            isAnyModelInstalledForEngine = isPhononInstalled,
-                            onDownload = {
-                                scope.launch {
-                                    VoiceDownloadDispatcher.downloadAndInstall(
-                                        context = context,
-                                        model = model,
-                                        pluginManager = pluginManager,
-                                        onSuccess = {
-                                            prefs.edit().putString("installed_model_${VoiceConstants.ENGINE_PHONON}", model.id).apply()
-                                            onRefresh()
-                                        },
-                                        onError = { err ->
-                                            Toast.makeText(context, err, Toast.LENGTH_LONG).show()
-                                        }
-                                    )
-                                }
-                            },
-                            onDelete = {
-                                prefs.edit().remove("installed_model_${VoiceConstants.ENGINE_PHONON}").apply()
-                                pluginManager.deleteModel(VoiceConstants.ENGINE_PHONON)
-                                Toast.makeText(context, "${model.displayName} model removed", Toast.LENGTH_SHORT).show()
-                                onRefresh()
-                            }
-                        )
-                    }
-
-                    HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 8.dp),
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                    )
                 }
 
                 Text(

@@ -24,7 +24,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 
-class ParakeetTdtEngine {
+class TransducerEngine {
 
     private val nativeLock = Any()
     @Volatile private var recognizer: OfflineRecognizer? = null
@@ -88,14 +88,14 @@ class ParakeetTdtEngine {
     @Volatile private var activeSession: SessionState? = null
 
     private val audioExecutor = Executors.newSingleThreadExecutor { r ->
-        Thread(r, "ParakeetAudioReaderThread").apply {
+        Thread(r, "TransducerAudioReaderThread").apply {
             priority = Thread.NORM_PRIORITY + 1
             isDaemon = true
         }
     }
 
     private val decoderExecutor = Executors.newSingleThreadExecutor { r ->
-        Thread(r, "ParakeetDecoderThread").apply {
+        Thread(r, "TransducerDecoderThread").apply {
             priority = Thread.NORM_PRIORITY
             isDaemon = true
         }
@@ -156,7 +156,7 @@ class ParakeetTdtEngine {
                 Log.i(TAG, "Transducer model loaded successfully from ${modelDir.name}")
                 true
             } catch (t: Throwable) {
-                Log.e(TAG, "Exception initializing Parakeet TDT native engine", t)
+                Log.e(TAG, "Exception initializing transducer native engine", t)
                 recognizer = null
                 loadedModelDirPath = null
                 false
@@ -227,7 +227,7 @@ class ParakeetTdtEngine {
         val currentRecognizer = recognizer
         if (currentRecognizer == null) {
             try { audioInput.close() } catch (_: Throwable) {}
-            callback.onError(VoiceConstants.VOICE_ERROR_MODEL_MISSING, "Parakeet TDT model not loaded")
+            callback.onError(VoiceConstants.VOICE_ERROR_MODEL_MISSING, "Transducer model not loaded")
             return
         }
 
@@ -565,7 +565,7 @@ class ParakeetTdtEngine {
                     }
                 }
             } catch (t: Throwable) {
-                Log.e(TAG, "Parakeet TDT audio stream error", t)
+                Log.e(TAG, "Transducer audio stream error", t)
                 if (!session.cancelled.get()) {
                     try {
                         callback.onError(VoiceConstants.VOICE_ERROR_AUDIO_START_FAILED, t.message ?: "Streaming error")
@@ -638,6 +638,6 @@ class ParakeetTdtEngine {
     }
 
     companion object {
-        private const val TAG = "ParakeetTdtEngine"
+        private const val TAG = "TransducerEngine"
     }
 }

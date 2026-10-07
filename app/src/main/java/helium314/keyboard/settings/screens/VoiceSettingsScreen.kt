@@ -124,7 +124,7 @@ fun VoiceSettingsScreen(
     var isInitialConnectionPending by remember { mutableStateOf(!isPluginConnected && isPluginInstalled) }
     val installedGigaAmPref = remember(prefs) { prefs.getString("installed_model_${VoiceConstants.ENGINE_GIGAAM}", null) }
     val installedWhisperPref = remember(prefs) { prefs.getString("installed_model_${VoiceConstants.ENGINE_WHISPER}", null) }
-    val installedParakeetPref = remember(prefs) { prefs.getString("installed_model_${VoiceConstants.ENGINE_PARAKEET}", null) }
+    val installedPhononPref = remember(prefs) { prefs.getString("installed_model_${VoiceConstants.ENGINE_PHONON}", null) }
     var gigaamState by remember {
         mutableStateOf<ModelState?>(
             pluginManager.getModelState(VoiceConstants.ENGINE_GIGAAM)
@@ -137,15 +137,10 @@ fun VoiceSettingsScreen(
                 ?: if (installedWhisperPref != null) ModelState(VoiceConstants.ENGINE_WHISPER, ModelState.STATE_READY, null) else null
         )
     }
-    var parakeetState by remember {
-        mutableStateOf<ModelState?>(
-            pluginManager.getModelState(VoiceConstants.ENGINE_PARAKEET)
-                ?: if (installedParakeetPref != null) ModelState(VoiceConstants.ENGINE_PARAKEET, ModelState.STATE_READY, null) else null
-        )
-    }
     var phononState by remember {
         mutableStateOf<ModelState?>(
             pluginManager.getModelState(VoiceConstants.ENGINE_PHONON)
+                ?: if (installedPhononPref != null) ModelState(VoiceConstants.ENGINE_PHONON, ModelState.STATE_READY, null) else null
         )
     }
     var showModelDownloadDialog by remember { mutableStateOf(false) }
@@ -195,7 +190,6 @@ fun VoiceSettingsScreen(
             engineInfo = pluginManager.getInfo()
             gigaamState = pluginManager.getModelState(VoiceConstants.ENGINE_GIGAAM)
             whisperState = pluginManager.getModelState(VoiceConstants.ENGINE_WHISPER)
-            parakeetState = pluginManager.getModelState(VoiceConstants.ENGINE_PARAKEET)
             phononState = pluginManager.getModelState(VoiceConstants.ENGINE_PHONON)
         } else if (!isInitialConnectionPending) {
             isPluginConnected = false
@@ -206,8 +200,8 @@ fun VoiceSettingsScreen(
             whisperState = if (installedWhisperPref != null) {
                 ModelState(VoiceConstants.ENGINE_WHISPER, ModelState.STATE_READY, null)
             } else null
-            parakeetState = if (installedParakeetPref != null) {
-                ModelState(VoiceConstants.ENGINE_PARAKEET, ModelState.STATE_READY, null)
+            phononState = if (installedPhononPref != null) {
+                ModelState(VoiceConstants.ENGINE_PHONON, ModelState.STATE_READY, null)
             } else null
         }
     }
@@ -227,7 +221,6 @@ fun VoiceSettingsScreen(
                 engineInfo = null
                 gigaamState = null
                 whisperState = null
-                parakeetState = null
                 phononState = null
             }
         })
@@ -257,7 +250,7 @@ fun VoiceSettingsScreen(
         }
     }
 
-    var pendingImportEngine by remember { mutableStateOf(VoiceConstants.ENGINE_PARAKEET) }
+    var pendingImportEngine by remember { mutableStateOf(VoiceConstants.ENGINE_PHONON) }
     val modelPicker = filePicker { uri ->
         val fallbackEngine = pendingImportEngine
         scope.launch(Dispatchers.IO) {
@@ -276,7 +269,7 @@ fun VoiceSettingsScreen(
                 }
 
                 var isZip = displayName?.endsWith(".zip", ignoreCase = true) == true ||
-                        displayName?.contains("parakeet", ignoreCase = true) == true ||
+                        displayName?.contains("phonon", ignoreCase = true) == true ||
                         displayName?.contains("gigaam", ignoreCase = true) == true
                 var isGgml = displayName?.endsWith(".bin", ignoreCase = true) == true || displayName?.endsWith(".gguf", ignoreCase = true) == true || displayName?.contains("whisper", ignoreCase = true) == true
 
@@ -308,7 +301,7 @@ fun VoiceSettingsScreen(
                 val isGigaamZip = isZip && (displayName?.contains("gigaam", ignoreCase = true) == true || fallbackEngine == VoiceConstants.ENGINE_GIGAAM)
                 val targetEngine = when {
                     isGigaamZip -> VoiceConstants.ENGINE_GIGAAM
-                    isZip -> if (fallbackEngine == VoiceConstants.ENGINE_GIGAAM) VoiceConstants.ENGINE_GIGAAM else VoiceConstants.ENGINE_PARAKEET
+                    isZip -> if (fallbackEngine == VoiceConstants.ENGINE_GIGAAM) VoiceConstants.ENGINE_GIGAAM else VoiceConstants.ENGINE_PHONON
                     isGgml -> VoiceConstants.ENGINE_WHISPER
                     else -> fallbackEngine
                 }
@@ -316,7 +309,7 @@ fun VoiceSettingsScreen(
                 withContext(Dispatchers.Main) {
                     val initialEngineName = when (targetEngine) {
                         VoiceConstants.ENGINE_GIGAAM -> "GigaAM v3"
-                        VoiceConstants.ENGINE_PARAKEET -> "Parakeet TDT"
+                        VoiceConstants.ENGINE_PHONON -> "Phonon-2"
                         else -> "Whisper"
                     }
                     Toast.makeText(context, "Importing $initialEngineName model...", Toast.LENGTH_SHORT).show()
@@ -329,7 +322,6 @@ fun VoiceSettingsScreen(
                         engineType = targetEngine,
                         language = when (targetEngine) {
                             VoiceConstants.ENGINE_GIGAAM -> "ru"
-                            VoiceConstants.ENGINE_PARAKEET -> "en"
                             else -> "multilingual"
                         },
                         sha256 = null,
@@ -342,7 +334,7 @@ fun VoiceSettingsScreen(
                     withContext(Dispatchers.Main) {
                         val engineName = when (actualEngine) {
                             VoiceConstants.ENGINE_GIGAAM -> "GigaAM v3"
-                            VoiceConstants.ENGINE_PARAKEET -> "Parakeet TDT"
+                            VoiceConstants.ENGINE_PHONON -> "Phonon-2"
                             else -> "Whisper"
                         }
                         if (success) {
@@ -470,9 +462,8 @@ fun VoiceSettingsScreen(
             ListPreference(
                 setting = it,
                 items = listOf(
-                    "Auto (GigaAM for Russian, Parakeet for English, Whisper for other)" to VoiceConstants.OFFLINE_ENGINE_AUTO,
+                    "Auto (GigaAM for Russian, Phonon-2 for English, Whisper for other)" to VoiceConstants.OFFLINE_ENGINE_AUTO,
                     "GigaAM v3 (Russian SOTA, Punctuation & Casing)" to VoiceConstants.OFFLINE_ENGINE_GIGAAM,
-                    "Parakeet TDT (English Only, Ultra Fast)" to VoiceConstants.OFFLINE_ENGINE_PARAKEET,
                     "Phonon-2 (English, 690 MB ONNX, High Accuracy)" to VoiceConstants.OFFLINE_ENGINE_PHONON,
                     "Whisper (Multilingual)" to VoiceConstants.OFFLINE_ENGINE_WHISPER
                 ),
@@ -594,7 +585,6 @@ fun VoiceSettingsScreen(
             pluginManager = pluginManager,
             gigaamState = gigaamState,
             whisperState = whisperState,
-            parakeetState = parakeetState,
             phononState = phononState,
             onRefresh = { updatePluginStatus() },
             onImportLocalFile = { engine ->
@@ -826,19 +816,19 @@ fun VoiceSettingsScreen(
                             if (isOfflineVoiceEnabled) {
                                 val currentEnginePref = prefs.getString(VoiceConstants.PREF_OFFLINE_ENGINE, VoiceConstants.OFFLINE_ENGINE_AUTO)
                                 val (badgeText, badgeContainerColor, badgeContentColor) = when {
-                                    parakeetState?.state == ModelState.STATE_READY && whisperState?.state == ModelState.STATE_READY -> {
+                                    phononState?.state == ModelState.STATE_READY && whisperState?.state == ModelState.STATE_READY -> {
                                         val label = when (currentEnginePref) {
                                             VoiceConstants.OFFLINE_ENGINE_WHISPER -> "Ready (Whisper)"
-                                            VoiceConstants.OFFLINE_ENGINE_PARAKEET -> "Ready (Parakeet)"
+                                            VoiceConstants.OFFLINE_ENGINE_PHONON -> "Ready (Phonon-2)"
                                             else -> "Ready (Auto)"
                                         }
                                         Triple(label, MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer)
                                     }
-                                    parakeetState?.state == ModelState.STATE_READY -> Triple("Ready (Parakeet)", MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer)
+                                    phononState?.state == ModelState.STATE_READY -> Triple("Ready (Phonon-2)", MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer)
                                     whisperState?.state == ModelState.STATE_READY -> Triple("Ready (Whisper)", MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer)
-                                    whisperState?.state == ModelState.STATE_LOADING || parakeetState?.state == ModelState.STATE_LOADING -> Triple("Loading…", MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.onTertiaryContainer)
+                                    whisperState?.state == ModelState.STATE_LOADING || phononState?.state == ModelState.STATE_LOADING -> Triple("Loading…", MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.onTertiaryContainer)
                                     whisperState?.state == ModelState.STATE_ERROR -> Triple("Error", MaterialTheme.colorScheme.errorContainer, MaterialTheme.colorScheme.onErrorContainer)
-                                    parakeetState?.state == ModelState.STATE_ERROR && whisperState?.state != ModelState.STATE_READY -> Triple("Error", MaterialTheme.colorScheme.errorContainer, MaterialTheme.colorScheme.onErrorContainer)
+                                    phononState?.state == ModelState.STATE_ERROR && whisperState?.state != ModelState.STATE_READY -> Triple("Error", MaterialTheme.colorScheme.errorContainer, MaterialTheme.colorScheme.onErrorContainer)
                                     else -> if (isPluginConnected) {
                                         Triple("No model", MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.onSurfaceVariant)
                                     } else if (isInitialConnectionPending) {

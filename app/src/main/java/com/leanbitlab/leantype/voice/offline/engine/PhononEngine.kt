@@ -50,7 +50,7 @@ class PhononEngine {
     @Volatile private var vadModelPath: String? = null
     @Volatile private var numThreads = 4
 
-    // Cross-segment context (same rationale as ParakeetTdtEngine).
+    // Cross-segment context (same rationale as TransducerEngine).
     @Volatile private var previousTail = FloatArray(0)
     @Volatile private var previousTailTranscript = ""
     private val contextTailSamples = 16000 * 4
@@ -746,7 +746,7 @@ class PhononEngine {
     /**
      * When decoding [contextTail + segment], the transcript includes the context
      * audio's words too; strip them from the front of the combined text.
-     * Mirrors ParakeetTdtEngine.stripContextOverlap.
+     * Mirrors TransducerEngine.stripContextOverlap.
      */
     private fun stripContextOverlap(fullText: String, contextTranscript: String): String {
         if (contextTranscript.isBlank()) return fullText

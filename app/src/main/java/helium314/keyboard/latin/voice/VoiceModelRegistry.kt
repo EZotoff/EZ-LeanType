@@ -32,21 +32,6 @@ object VoiceModelRegistry {
         )
     )
 
-    val parakeetModels = listOf(
-        VoiceModelItem(
-            id = "parakeet-tdt-110m-int8",
-            displayName = "Parakeet TDT 110M (Streaming)",
-            engineType = VoiceConstants.ENGINE_PARAKEET,
-            language = "English",
-            languageCode = "en",
-            sizeMb = "131 MB",
-            downloadUrl = "https://github.com/EZotoff/EZ-LeanType/releases/download/v4.2.7/parakeet-tdt-110m.zip",
-            backupDownloadUrl = "http://127.0.0.1:8080/parakeet-tdt-110m.zip",
-            browserUrl = "https://github.com/EZotoff/EZ-LeanType/releases/download/v4.2.7/parakeet-tdt-110m.zip",
-            description = "FastConformer TDT v3: Real-time word streaming with RTF < 0.05 on Nothing Phone (2)."
-        )
-    )
-
     val whisperModels = listOf(
         VoiceModelItem(
             id = "whisper-large-v3-turbo-q5_0",
@@ -115,7 +100,6 @@ object VoiceModelRegistry {
 
     fun findById(id: String): VoiceModelItem? {
         return gigaamModels.firstOrNull { it.id == id }
-            ?: parakeetModels.firstOrNull { it.id == id }
             ?: phononModels.firstOrNull { it.id == id }
             ?: whisperModels.firstOrNull { it.id == id }
     }

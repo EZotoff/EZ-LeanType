@@ -57,7 +57,6 @@ object VoiceConstants {
 
     const val ENGINE_VOSK = "vosk"
     const val ENGINE_WHISPER = "whisper"
-    const val ENGINE_PARAKEET = "parakeet"
     const val ENGINE_GIGAAM = "gigaam"
     const val ENGINE_PHONON = "phonon"
 
@@ -103,7 +102,6 @@ object VoiceConstants {
     const val PREF_OFFLINE_ENGINE = "voice_offline_engine"
     const val OFFLINE_ENGINE_AUTO = "auto"
     const val OFFLINE_ENGINE_WHISPER = "whisper"
-    const val OFFLINE_ENGINE_PARAKEET = "parakeet"
     const val OFFLINE_ENGINE_GIGAAM = "gigaam"
     const val OFFLINE_ENGINE_PHONON = "phonon"
     const val PREF_USE_DEBUG_VOICE_STUB = "use_debug_voice_stub"

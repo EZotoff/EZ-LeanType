@@ -27,13 +27,6 @@ class ModelManager(
         }
 
         return when (engineType) {
-            VoiceConstants.ENGINE_PARAKEET -> {
-                if (isTransducerModelValid(targetFile)) {
-                    ModelState(engineType, ModelState.STATE_READY, "Parakeet TDT v3 model ready")
-                } else {
-                    ModelState(engineType, ModelState.STATE_ERROR, "Invalid Parakeet TDT model files")
-                }
-            }
             VoiceConstants.ENGINE_GIGAAM -> {
                 if (isTransducerModelValid(targetFile)) {
                     ModelState(engineType, ModelState.STATE_READY, "GigaAM v3 E2E RNN-T ready")
@@ -67,7 +60,7 @@ class ModelManager(
         if (!targetFile.exists()) return false
 
         return when (engineType) {
-            VoiceConstants.ENGINE_PARAKEET, VoiceConstants.ENGINE_GIGAAM -> isTransducerModelValid(targetFile)
+            VoiceConstants.ENGINE_GIGAAM -> isTransducerModelValid(targetFile)
             VoiceConstants.ENGINE_PHONON -> isPhononModelValid(targetFile)
             VoiceConstants.ENGINE_WHISPER -> {
                 val whisperFile = File(targetFile, "model.bin").takeIf { it.exists() } ?: targetFile
@@ -80,8 +73,6 @@ class ModelManager(
     fun getModelDir(engineType: String): File {
         return File(modelsDir, engineType)
     }
-
-    fun isParakeetModelValid(fileOrDir: File): Boolean = isTransducerModelValid(fileOrDir)
 
     /** tiyuvta/Phonon-2-ONNX export layout. */
     fun isPhononModelValid(fileOrDir: File): Boolean {
@@ -149,10 +140,11 @@ class ModelManager(
         var resolvedEngine = targetEngine
         if (isZipFile(sourceFile)) {
             val fileName = sourceFile.name.lowercase()
-            resolvedEngine = if (targetEngine == VoiceConstants.ENGINE_GIGAAM || fileName.contains("gigaam")) {
-                VoiceConstants.ENGINE_GIGAAM
-            } else {
-                VoiceConstants.ENGINE_PARAKEET
+            resolvedEngine = when {
+                targetEngine == VoiceConstants.ENGINE_GIGAAM || fileName.contains("gigaam") -> VoiceConstants.ENGINE_GIGAAM
+                targetEngine == VoiceConstants.ENGINE_PHONON -> VoiceConstants.ENGINE_PHONON
+                looksLikePhononZip(sourceFile) -> VoiceConstants.ENGINE_PHONON
+                else -> VoiceConstants.ENGINE_GIGAAM
             }
         } else if (isWhisperHeaderValid(sourceFile)) {
             resolvedEngine = VoiceConstants.ENGINE_WHISPER
@@ -162,7 +154,7 @@ class ModelManager(
         val finalTarget = File(modelsDir, resolvedEngine)
 
         try {
-            if (resolvedEngine == VoiceConstants.ENGINE_PARAKEET || resolvedEngine == VoiceConstants.ENGINE_GIGAAM) {
+            if (resolvedEngine == VoiceConstants.ENGINE_GIGAAM || resolvedEngine == VoiceConstants.ENGINE_PHONON) {
                 finalTarget.deleteRecursively()
                 finalTarget.mkdirs()
                 if (isZipFile(sourceFile)) {
@@ -225,12 +217,9 @@ class ModelManager(
             // Auto-detect engine from physical contents
             if (isZipFile(tmpFile)) {
                 if (targetEngine != VoiceConstants.ENGINE_GIGAAM) {
-                    targetEngine = VoiceConstants.ENGINE_PARAKEET
+                    targetEngine = VoiceConstants.ENGINE_PHONON
                 }
-                // Phonon-2 export zips contain its own file set; detect by the
-                // distinctive preprocessor file once extracted, else keep the
-                // pre-validated engine type chosen by the caller.
-                if (targetEngine == VoiceConstants.ENGINE_PARAKEET && looksLikePhononZip(tmpFile)) {
+                if (looksLikePhononZip(tmpFile)) {
                     targetEngine = VoiceConstants.ENGINE_PHONON
                 }
             } else if (isWhisperHeaderValid(tmpFile)) {

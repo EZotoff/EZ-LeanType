@@ -121,53 +121,6 @@ class SpellCheckerLogicTest {
     }
 
     @Test
-    fun testVoiceEngineRoutingLogic() {
-        fun selectEngine(
-            pref: String,
-            languageTag: String,
-            activeLanguage: String,
-            parakeetReady: Boolean,
-            whisperReady: Boolean
-        ): String {
-            val isRussian = languageTag.startsWith("ru") || activeLanguage.startsWith("ru")
-            val isEnglish = languageTag.startsWith("en") || activeLanguage.startsWith("en")
-
-            val preferWhisper = when (pref) {
-                "whisper" -> true
-                "parakeet" -> false
-                else -> { // auto
-                    if (isRussian || (!isEnglish && activeLanguage.isNotEmpty())) {
-                        true
-                    } else {
-                        !parakeetReady && whisperReady
-                    }
-                }
-            }
-
-            return if (preferWhisper) {
-                if (whisperReady) "whisper" else if (parakeetReady) "parakeet" else "none"
-            } else {
-                if (parakeetReady) "parakeet" else if (whisperReady) "whisper" else "none"
-            }
-        }
-
-        // Auto mode, Russian language -> MUST route to Whisper
-        assertEquals("whisper", selectEngine("auto", "ru", "ru", parakeetReady = true, whisperReady = true))
-        assertEquals("whisper", selectEngine("auto", "auto", "ru", parakeetReady = true, whisperReady = true))
-
-        // Auto mode, English language -> Routes to Parakeet (faster)
-        assertEquals("parakeet", selectEngine("auto", "en", "en", parakeetReady = true, whisperReady = true))
-
-        // Explicit preference overrides
-        assertEquals("whisper", selectEngine("whisper", "en", "en", parakeetReady = true, whisperReady = true))
-        assertEquals("parakeet", selectEngine("parakeet", "ru", "ru", parakeetReady = true, whisperReady = true))
-
-        // Fallbacks
-        assertEquals("whisper", selectEngine("parakeet", "en", "en", parakeetReady = false, whisperReady = true))
-        assertEquals("parakeet", selectEngine("auto", "ru", "ru", parakeetReady = true, whisperReady = false))
-    }
-
-    @Test
     fun testRussianMorphologyAndInflectionMatching() {
         val RUSSIAN_INFLECTION_SUFFIXES = arrayOf(
             // Participles & gerunds
