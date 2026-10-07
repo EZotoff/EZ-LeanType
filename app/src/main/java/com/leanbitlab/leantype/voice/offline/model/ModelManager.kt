@@ -89,7 +89,8 @@ class ModelManager(
         if (!fileOrDir.isDirectory) return false
         val hasPreprocessor = File(fileOrDir, "preprocessor-model.onnx").length() > 1024
         val hasEncoder = File(fileOrDir, "encoder-model.int8.onnx").length() > 10L * 1024 * 1024 ||
-                File(fileOrDir, "encoder-model.onnx").length() > 10L * 1024 * 1024
+                // fp32 graph is small (~800 KB) with weights in a sidecar .data file
+                (File(fileOrDir, "encoder-model.onnx").exists() && File(fileOrDir, "encoder-model.onnx.data").length() > 10L * 1024 * 1024)
         val hasDecoderJoint = File(fileOrDir, "decoder_joint-model.int8.onnx").length() > 1024 * 1024 ||
                 File(fileOrDir, "decoder_joint-model.onnx").length() > 1024 * 1024
         val hasVocab = File(fileOrDir, "vocab.txt").length() > 1024

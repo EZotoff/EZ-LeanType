@@ -141,10 +141,17 @@ class PhononEngine {
             }
 
             val newVocab = try {
-                vocabFile.readLines().mapNotNull { line ->
+                // vocab.txt lines are "<token> <id>" (e.g. "<unk> 0"); map by id.
+                val byId = arrayOfNulls<String>(8193)
+                vocabFile.readLines().forEach { line ->
                     val idx = line.lastIndexOf(' ')
-                    if (idx <= 0) null else line.substring(idx + 1)
+                    if (idx > 0) {
+                        val token = line.substring(0, idx)
+                        val id = line.substring(idx + 1).toIntOrNull()
+                        if (id != null && id in 0 until 8193) byId[id] = token
+                    }
                 }
+                byId.map { it ?: "" }
             } catch (t: Throwable) {
                 Log.e(TAG, "Failed to read vocab.txt", t)
                 return false
@@ -642,8 +649,12 @@ class PhononEngine {
         val outBuf = FloatArray(8198)
 
         while (t < numEncFrames) {
+            // encoded is [1, 1024, T'] channel-major: element (0, d, t) sits at
+            // d * numEncFrames + t. Frame t is a strided column, not a contiguous row.
             val frame = FloatArray(1024)
-            System.arraycopy(encoded, t * 1024, frame, 0, 1024)
+            for (d in 0 until 1024) {
+                frame[d] = encoded[d * numEncFrames + t]
+            }
 
             var newH = h
             var newC = c
@@ -695,7 +706,6 @@ class PhononEngine {
             }
             var dur = bestDur
             if (bestTok == 8192 && dur == 0) dur = 1
-            Log.d(TAG, "TDT frame $t: tok=$bestTok piece='${if (bestTok < vocabLocal.size) vocabLocal[bestTok] else "?"}' dur=$bestDur top=${outBuf[bestTok]}")
             if (bestTok != 8192) {
                 val piece = vocabLocal[bestTok]
                 if (!piece.startsWith("<")) sb.append(piece)
@@ -717,7 +727,7 @@ class PhononEngine {
 
         val text = sb.toString().replace("\u2581", " ").replace(Regex("\\s+"), " ").trim()
         val t1 = System.currentTimeMillis()
-        Log.i(TAG, "Decode: ${samples.size / 16000.0}s audio, enc ${tEnc - t0} ms, tdt ${t1 - tEnc} ms, ${numEncFrames} frames, text='$text'")
+        Log.i(TAG, "Decode: ${samples.size / 16000.0}s audio, enc ${tEnc - t0} ms, tdt ${t1 - tEnc} ms")
         return text
     }
 

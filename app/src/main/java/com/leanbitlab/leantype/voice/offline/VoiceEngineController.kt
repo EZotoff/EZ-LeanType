@@ -218,10 +218,10 @@ class VoiceEngineController(private val context: Context) : IVoiceEngine.Stub() 
                 callback.onError(VoiceConstants.VOICE_ERROR_MODEL_MISSING, "Russian voice typing requires GigaAM v3 or Whisper. Please download a model in Voice Settings.")
                 return
             } else if (isEnglish) {
-                // English: Parakeet TDT 0.6B v3 fp16 — streaming with top accuracy;
+                // English: Phonon-2 — best accuracy and fastest decode on device;
                 // fallback to Whisper, then GigaAM.
-                if (parakeetReady) {
-                    startParakeetSession(audioInput, wrappedCallback, config, callback)
+                if (phononReady) {
+                    startPhononSession(audioInput, wrappedCallback, config, callback)
                     return
                 }
                 if (whisperReady) {
@@ -242,8 +242,8 @@ class VoiceEngineController(private val context: Context) : IVoiceEngine.Stub() 
                     startGigaAmSession(audioInput, wrappedCallback, config, callback)
                     return
                 }
-                if (parakeetReady) {
-                    startParakeetSession(audioInput, wrappedCallback, config, callback)
+                if (phononReady) {
+                    startPhononSession(audioInput, wrappedCallback, config, callback)
                     return
                 }
             }
