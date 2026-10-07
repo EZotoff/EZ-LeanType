@@ -233,20 +233,25 @@ class ParakeetTdtEngine {
 
         // Initialize VAD for this session if model is available
         // Silero VAD tuned for phone mic dictation:
-        // - threshold 0.35: prevents swallowing quiet leading consonants (sh, th, s, f)
-        // - minSilenceDuration 0.35s: natural conversational pause before sentence finalization
-        // - minSpeechDuration 0.15s: catches short monosyllabic words (to, a, I, so) without noise reject
-        // - maxSpeechDuration 8.0s: ample sentence headroom without buffer bloat
+        // - threshold 0.5: upstream default, robust on phone mics
+        // - minSilenceDuration 2.0s: thinking pauses must not split an utterance;
+        //   only a real sentence end (or EOF) finalizes a segment. Upstream offline
+        //   default is 0.1s, streaming turn-detection uses 0.5-1.0s; dictation needs more.
+        // - minSpeechDuration 0.1s: catches short monosyllabic words (to, a, I, so)
+        // - maxSpeechDuration 25.0s: more context per decode before a forced split,
+        //   which loses cross-segment context (casing/punctuation drift, missed words)
         val currentVadConfig = vadModelPath?.let { path ->
             try {
                 VadModelConfig().apply {
                     sileroVadModelConfig = SileroVadModelConfig(
                         model = path,
-                        threshold = 0.5f,
-                        minSilenceDuration = 0.5f,
-                        minSpeechDuration = 0.25f,
+                        // - threshold 0.35: borderline frames (breathy/quiet English speech on phone mic)
+                        //   stay classified as speech, preventing premature silence -> segment splits
+                        threshold = 0.35f,
+                        minSilenceDuration = 2.0f,
+                        minSpeechDuration = 0.1f,
                         windowSize = 512,
-                        maxSpeechDuration = 20.0f
+                        maxSpeechDuration = 25.0f
                     )
                     sampleRate = 16000
                     numThreads = 1
