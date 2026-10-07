@@ -1327,6 +1327,24 @@ class RichInputConnection(private val mParent: InputMethodService) : PrivateComm
         return StringUtils.isInsideDoubleQuoteOrAfterDigit(text)
     }
 
+    /**
+     * Resync the cached selection from the editor. Voice input commits text through the raw
+     * InputConnection and suppresses onUpdateSelection processing while active, so after a
+     * voice session the cache can still hold the pre-insert cursor (start of the transcribed
+     * text). Anchoring a delete-pointer drag on the stale value selects from the wrong end.
+     */
+    fun resyncCursorPositionFromEditor() {
+        mIC = mParent.currentInputConnection
+        if (!isConnected()) return
+        val et = mIC?.getExtractedText(ExtractedTextRequest(), 0) ?: return
+        if (et.selectionStart >= 0) {
+            mExpectedSelStart = et.selectionStart + et.startOffset
+            mExpectedSelEnd = if (et.selectionEnd >= 0) et.selectionEnd + et.startOffset else mExpectedSelStart
+            if (mExpectedSelEnd < mExpectedSelStart) mExpectedSelEnd = mExpectedSelStart
+            mPendingInFlightDeletions = 0
+        }
+    }
+
     fun tryFixIncorrectCursorPosition() {
         mIC = mParent.currentInputConnection
 

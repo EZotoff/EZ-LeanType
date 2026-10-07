@@ -965,6 +965,7 @@ class VoiceInputManager(
         try {
             ims.inputLogic.finishInput()
             ims.inputLogic.connection.tryFixIncorrectCursorPosition()
+            ims.inputLogic.connection.resyncCursorPositionFromEditor()
         } catch (e: Throwable) {
             Log.w(TAG, "Failed to reset inputLogic/connection in cleanupSession", e)
         }

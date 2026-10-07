@@ -388,6 +388,9 @@ class KeyboardActionListenerImpl(private val latinIME: LatinIME, private val inp
 
     override fun onMoveDeletePointer(steps: Int) {
         inputLogic.finishInput()
+        // voice input bypasses the connection cache; resync so the drag anchors at the
+        // actual editor cursor (end of transcribed text), not the stale pre-voice position
+        connection.resyncCursorPositionFromEditor()
         val end = connection.expectedSelectionEnd
         val actualSteps = actualSteps(steps)
         val start = connection.expectedSelectionStart + actualSteps
