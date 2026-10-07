@@ -41,6 +41,7 @@ fun VoiceModelDownloadDialog(
     gigaamState: ModelState? = null,
     whisperState: ModelState?,
     parakeetState: ModelState? = null,
+    phononState: ModelState? = null,
     voskState: ModelState? = null,
     onRefresh: () -> Unit,
     onImportLocalFile: (String) -> Unit
@@ -52,12 +53,14 @@ fun VoiceModelDownloadDialog(
     val installedGigaAmId = prefs.getString("installed_model_${VoiceConstants.ENGINE_GIGAAM}", null)
     val installedWhisperId = prefs.getString("installed_model_${VoiceConstants.ENGINE_WHISPER}", null)
     val installedParakeetId = prefs.getString("installed_model_${VoiceConstants.ENGINE_PARAKEET}", null)
+    val installedPhononId = prefs.getString("installed_model_${VoiceConstants.ENGINE_PHONON}", null)
     val activeDownloadingId = VoiceDownloadDispatcher.downloadingModelId.value
     val currentProgress = VoiceDownloadDispatcher.downloadProgress.floatValue
 
     val isGigaAmInstalled = gigaamState?.state == ModelState.STATE_READY
     val isWhisperInstalled = whisperState?.state == ModelState.STATE_READY
     val isParakeetInstalled = parakeetState?.state == ModelState.STATE_READY
+    val isPhononInstalled = phononState?.state == ModelState.STATE_READY
     val matchedPredefinedModel = VoiceModelRegistry.whisperModels.any { it.id == installedWhisperId }
 
     ThreeButtonAlertDialog(
@@ -277,6 +280,57 @@ fun VoiceModelDownloadDialog(
                                 Text("Import")
                             }
                         }
+                    }
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 8.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
+                }
+
+                if (VoiceModelRegistry.phononModels.isNotEmpty()) {
+                    Text(
+                        text = "Phonon-2 (English, High Accuracy, onnxruntime)",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)
+                    )
+
+                    for (model in VoiceModelRegistry.phononModels) {
+                        val isThisModelInstalled = isPhononInstalled && installedPhononId == model.id
+                        val isThisModelDownloading = activeDownloadingId == model.id
+
+                        ModelDownloadRow(
+                            model = model,
+                            isThisModelInstalled = isThisModelInstalled,
+                            isThisModelDownloading = isThisModelDownloading,
+                            isAnyModelDownloading = activeDownloadingId != null,
+                            downloadProgress = currentProgress,
+                            isAnyModelInstalledForEngine = isPhononInstalled,
+                            onDownload = {
+                                scope.launch {
+                                    VoiceDownloadDispatcher.downloadAndInstall(
+                                        context = context,
+                                        model = model,
+                                        pluginManager = pluginManager,
+                                        onSuccess = {
+                                            prefs.edit().putString("installed_model_${VoiceConstants.ENGINE_PHONON}", model.id).apply()
+                                            onRefresh()
+                                        },
+                                        onError = { err ->
+                                            Toast.makeText(context, err, Toast.LENGTH_LONG).show()
+                                        }
+                                    )
+                                }
+                            },
+                            onDelete = {
+                                prefs.edit().remove("installed_model_${VoiceConstants.ENGINE_PHONON}").apply()
+                                pluginManager.deleteModel(VoiceConstants.ENGINE_PHONON)
+                                Toast.makeText(context, "${model.displayName} model removed", Toast.LENGTH_SHORT).show()
+                                onRefresh()
+                            }
+                        )
                     }
 
                     HorizontalDivider(

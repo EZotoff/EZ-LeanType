@@ -41,6 +41,13 @@ class ModelManager(
                     ModelState(engineType, ModelState.STATE_ERROR, "Invalid GigaAM model files")
                 }
             }
+            VoiceConstants.ENGINE_PHONON -> {
+                if (isPhononModelValid(targetFile)) {
+                    ModelState(engineType, ModelState.STATE_READY, "Phonon-2 ONNX ready")
+                } else {
+                    ModelState(engineType, ModelState.STATE_ERROR, "Invalid Phonon-2 model files (need preprocessor-model.onnx, encoder-model.int8.onnx, decoder_joint-model.int8.onnx, vocab.txt)")
+                }
+            }
             VoiceConstants.ENGINE_WHISPER -> {
                 val whisperFile = File(targetFile, "model.bin").takeIf { it.exists() } ?: targetFile
                 if (isWhisperHeaderValid(whisperFile)) {
@@ -61,6 +68,7 @@ class ModelManager(
 
         return when (engineType) {
             VoiceConstants.ENGINE_PARAKEET, VoiceConstants.ENGINE_GIGAAM -> isTransducerModelValid(targetFile)
+            VoiceConstants.ENGINE_PHONON -> isPhononModelValid(targetFile)
             VoiceConstants.ENGINE_WHISPER -> {
                 val whisperFile = File(targetFile, "model.bin").takeIf { it.exists() } ?: targetFile
                 isWhisperHeaderValid(whisperFile)
@@ -75,11 +83,25 @@ class ModelManager(
 
     fun isParakeetModelValid(fileOrDir: File): Boolean = isTransducerModelValid(fileOrDir)
 
+    /** tiyuvta/Phonon-2-ONNX export layout. */
+    fun isPhononModelValid(fileOrDir: File): Boolean {
+        if (!fileOrDir.exists()) return false
+        if (!fileOrDir.isDirectory) return false
+        val hasPreprocessor = File(fileOrDir, "preprocessor-model.onnx").length() > 1024
+        val hasEncoder = File(fileOrDir, "encoder-model.int8.onnx").length() > 10L * 1024 * 1024 ||
+                File(fileOrDir, "encoder-model.onnx").length() > 10L * 1024 * 1024
+        val hasDecoderJoint = File(fileOrDir, "decoder_joint-model.int8.onnx").length() > 1024 * 1024 ||
+                File(fileOrDir, "decoder_joint-model.onnx").length() > 1024 * 1024
+        val hasVocab = File(fileOrDir, "vocab.txt").length() > 1024
+        return hasPreprocessor && hasEncoder && hasDecoderJoint && hasVocab
+    }
+
     fun isTransducerModelValid(fileOrDir: File): Boolean {
         if (!fileOrDir.exists()) return false
         if (fileOrDir.isDirectory) {
             val hasEncoder = (File(fileOrDir, "encoder.int8.onnx").length() > 1024 * 1024) ||
                     (File(fileOrDir, "encoder.onnx").length() > 1024 * 1024) ||
+                    (File(fileOrDir, "encoder.fp16.onnx").length() > 1024 * 1024) ||
                     (File(fileOrDir, "model.int8.onnx").length() > 1024 * 1024) ||
                     (File(fileOrDir, "model.onnx").length() > 1024 * 1024) ||
                     (File(fileOrDir, "gigaam_v3_e2e_rnnt_encoder_int8.onnx").length() > 1024 * 1024)
@@ -204,6 +226,12 @@ class ModelManager(
                 if (targetEngine != VoiceConstants.ENGINE_GIGAAM) {
                     targetEngine = VoiceConstants.ENGINE_PARAKEET
                 }
+                // Phonon-2 export zips contain its own file set; detect by the
+                // distinctive preprocessor file once extracted, else keep the
+                // pre-validated engine type chosen by the caller.
+                if (targetEngine == VoiceConstants.ENGINE_PARAKEET && looksLikePhononZip(tmpFile)) {
+                    targetEngine = VoiceConstants.ENGINE_PHONON
+                }
             } else if (isWhisperHeaderValid(tmpFile)) {
                 targetEngine = VoiceConstants.ENGINE_WHISPER
             }
@@ -222,8 +250,17 @@ class ModelManager(
         return importModelDirectly(request).first
     }
 
-    private fun isZipFile(file: File): Boolean {
-        return try {
+    private fun looksLikePhononZip(file: File): Boolean = try {
+        ZipFile(file).use { zip ->
+            zip.getEntry("preprocessor-model.onnx") != null &&
+                    zip.getEntry("vocab.txt") != null &&
+                    (zip.getEntry("encoder-model.int8.onnx") != null || zip.getEntry("encoder-model.onnx") != null)
+        }
+    } catch (e: Exception) {
+        false
+    }
+
+    private fun isZipFile(file: File): Boolean {        return try {
             FileInputStream(file).use { fis ->
                 val header = ByteArray(4)
                 val read = fis.read(header)

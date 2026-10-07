@@ -157,6 +157,9 @@ android {
             // false is required for Android 16+ 16-KB page alignment compatibility on prebuilts.
             useLegacyPackaging = false
             keepDebugSymbols += "**/*.so"
+            // onnxruntime-android and sherpa-onnx.aar both bundle libonnxruntime.so;
+            // keep the newer one from the ORT AAR.
+            pickFirsts += "**/libonnxruntime.so"
         }
         resources {
             excludes += "assets/dexopt/baseline.prof"
@@ -251,6 +254,9 @@ dependencies {
 
     // Offline Voice Engine (Sherpa-ONNX with Parakeet TDT & Whisper)
     implementation(files("libs/sherpa-onnx.aar"))
+    // On arm64 on-device builds the JVM cannot resolve DNS (see .harness/),
+    // so the onnxruntime-android AAR is also seeded into the local maven repo.
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.20.0")
 
     // WorkManager — required by plugins loaded via DexClassLoader.
     // ML Kit internally calls WorkManager.getInstance(context) using the host app context,
@@ -291,6 +297,7 @@ dependencies {
         }
     }
 }
+
 dependencies {
     testImplementation("androidx.test.ext:junit:1.1.5")
     testImplementation("androidx.compose.ui:ui-test-junit4")

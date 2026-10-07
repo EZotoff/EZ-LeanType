@@ -12,6 +12,7 @@ import com.leanbitlab.leantype.voice.VoiceConstants
 import com.leanbitlab.leantype.voice.VoiceEngineInfo
 import com.leanbitlab.leantype.voice.VoiceSessionConfig
 import com.leanbitlab.leantype.voice.offline.engine.ParakeetTdtEngine
+import com.leanbitlab.leantype.voice.offline.engine.PhononEngine
 import com.leanbitlab.leantype.voice.offline.engine.WhisperEngine
 import com.leanbitlab.leantype.voice.offline.model.ModelManager
 import helium314.keyboard.latin.utils.prefs
@@ -22,12 +23,14 @@ class VoiceEngineController(private val context: Context) : IVoiceEngine.Stub() 
     val whisperEngine = WhisperEngine()
     val parakeetEngine = ParakeetTdtEngine()
     val gigaamEngine = ParakeetTdtEngine()
+    val phononEngine = PhononEngine()
     val modelManager = ModelManager(context) { engineType ->
         try {
             when (engineType) {
                 VoiceConstants.ENGINE_WHISPER -> whisperEngine.releaseContext()
                 VoiceConstants.ENGINE_PARAKEET -> parakeetEngine.releaseContext()
                 VoiceConstants.ENGINE_GIGAAM -> gigaamEngine.releaseContext()
+                VoiceConstants.ENGINE_PHONON -> phononEngine.releaseContext()
             }
         } catch (_: Throwable) {}
     }
@@ -75,6 +78,7 @@ class VoiceEngineController(private val context: Context) : IVoiceEngine.Stub() 
             when (type) {
                 VoiceConstants.ENGINE_PARAKEET -> parakeetEngine.releaseContext()
                 VoiceConstants.ENGINE_GIGAAM -> gigaamEngine.releaseContext()
+                VoiceConstants.ENGINE_PHONON -> phononEngine.releaseContext()
                 else -> whisperEngine.releaseContext()
             }
         } catch (t: Throwable) {
@@ -134,6 +138,7 @@ class VoiceEngineController(private val context: Context) : IVoiceEngine.Stub() 
             val gigaamReady = modelManager.isModelReady(VoiceConstants.ENGINE_GIGAAM)
             val parakeetReady = modelManager.isModelReady(VoiceConstants.ENGINE_PARAKEET)
             val whisperReady = modelManager.isModelReady(VoiceConstants.ENGINE_WHISPER)
+            val phononReady = modelManager.isModelReady(VoiceConstants.ENGINE_PHONON)
 
             val offlineEnginePref = try {
                 context.prefs().getString(
@@ -160,7 +165,7 @@ class VoiceEngineController(private val context: Context) : IVoiceEngine.Stub() 
             val isRussian = isExplicitRussian || activeLanguage.startsWith("ru")
             val isEnglish = isExplicitEnglish || activeLanguage.startsWith("en")
 
-            Log.i(TAG, "Engine routing: pref=$offlineEnginePref, lang=$lang, activeLang=$activeLanguage, isRussian=$isRussian, gigaamReady=$gigaamReady, parakeetReady=$parakeetReady, whisperReady=$whisperReady")
+            Log.i(TAG, "Engine routing: pref=$offlineEnginePref, lang=$lang, activeLang=$activeLanguage, isRussian=$isRussian, gigaamReady=$gigaamReady, parakeetReady=$parakeetReady, whisperReady=$whisperReady, phononReady=$phononReady")
 
             // 1. Explicit user engine preference
             if (offlineEnginePref == VoiceConstants.OFFLINE_ENGINE_GIGAAM) {
@@ -178,6 +183,14 @@ class VoiceEngineController(private val context: Context) : IVoiceEngine.Stub() 
                 }
                 try { audioInput.close() } catch (_: Throwable) {}
                 callback.onError(VoiceConstants.VOICE_ERROR_MODEL_MISSING, "Parakeet TDT model not ready. Please download it in Voice Settings.")
+                return
+            } else if (offlineEnginePref == VoiceConstants.OFFLINE_ENGINE_PHONON) {
+                if (phononReady) {
+                    startPhononSession(audioInput, wrappedCallback, config, callback)
+                    return
+                }
+                try { audioInput.close() } catch (_: Throwable) {}
+                callback.onError(VoiceConstants.VOICE_ERROR_MODEL_MISSING, "Phonon-2 model not ready. Please download it in Voice Settings.")
                 return
             } else if (offlineEnginePref == VoiceConstants.OFFLINE_ENGINE_WHISPER) {
                 if (whisperReady) {
@@ -205,7 +218,8 @@ class VoiceEngineController(private val context: Context) : IVoiceEngine.Stub() 
                 callback.onError(VoiceConstants.VOICE_ERROR_MODEL_MISSING, "Russian voice typing requires GigaAM v3 or Whisper. Please download a model in Voice Settings.")
                 return
             } else if (isEnglish) {
-                // English: Parakeet TDT streaming is fastest; fallback to Whisper, then GigaAM
+                // English: Parakeet TDT 0.6B v3 fp16 — streaming with top accuracy;
+                // fallback to Whisper, then GigaAM.
                 if (parakeetReady) {
                     startParakeetSession(audioInput, wrappedCallback, config, callback)
                     return
@@ -307,6 +321,37 @@ class VoiceEngineController(private val context: Context) : IVoiceEngine.Stub() 
         callback.onError(VoiceConstants.VOICE_ERROR_MODEL_INVALID, "Failed to initialize Parakeet TDT model.")
     }
 
+    private fun startPhononSession(
+        audioInput: ParcelFileDescriptor,
+        wrappedCallback: IVoiceCallback,
+        config: VoiceSessionConfig?,
+        callback: IVoiceCallback
+    ) {
+        val phononModelDir = modelManager.getModelDir(VoiceConstants.ENGINE_PHONON)
+        var phononLoaded = false
+        try {
+            phononLoaded = phononEngine.loadModel(phononModelDir, context)
+        } catch (t: Throwable) {
+            Log.e(TAG, "Exception loading Phonon-2 model", t)
+        }
+
+        if (phononLoaded) {
+            Log.i(TAG, "Starting Phonon-2 session")
+            isSessionActive = true
+            phononEngine.startSession(audioInput, wrappedCallback, config)
+            return
+        }
+
+        val parakeetReady = modelManager.isModelReady(VoiceConstants.ENGINE_PARAKEET)
+        if (parakeetReady) {
+            Log.w(TAG, "Phonon-2 load failed, falling back to Parakeet")
+            startParakeetSession(audioInput, wrappedCallback, config, callback)
+            return
+        }
+        try { audioInput.close() } catch (_: Throwable) {}
+        callback.onError(VoiceConstants.VOICE_ERROR_MODEL_INVALID, "Failed to initialize Phonon-2 model.")
+    }
+
     private fun startWhisperSession(
         audioInput: ParcelFileDescriptor,
         wrappedCallback: IVoiceCallback,
@@ -341,6 +386,7 @@ class VoiceEngineController(private val context: Context) : IVoiceEngine.Stub() 
     override fun cancelSession() {
         isSessionActive = false
         try { parakeetEngine.cancelSession() } catch (_: Throwable) {}
+        try { phononEngine.cancelSession() } catch (_: Throwable) {}
         try { gigaamEngine.cancelSession() } catch (_: Throwable) {}
         try { whisperEngine.cancelSession() } catch (_: Throwable) {}
     }
@@ -348,6 +394,7 @@ class VoiceEngineController(private val context: Context) : IVoiceEngine.Stub() 
     override fun release() {
         isSessionActive = false
         try { parakeetEngine.releaseContext() } catch (_: Throwable) {}
+        try { phononEngine.releaseContext() } catch (_: Throwable) {}
         try { gigaamEngine.releaseContext() } catch (_: Throwable) {}
         try { whisperEngine.releaseContext() } catch (_: Throwable) {}
     }

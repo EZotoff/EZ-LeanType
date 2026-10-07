@@ -98,9 +98,25 @@ object VoiceModelRegistry {
         )
     )
 
+    val phononModels = listOf(
+        VoiceModelItem(
+            id = "phonon-2-onnx-int8",
+            displayName = "Phonon-2 (English, High Accuracy)",
+            engineType = VoiceConstants.ENGINE_PHONON,
+            language = "English",
+            languageCode = "en",
+            sizeMb = "690 MB",
+            downloadUrl = "https://huggingface.co/tiyuvta/Phonon-2-ONNX/resolve/main/encoder-model.int8.onnx",
+            backupDownloadUrl = "",
+            browserUrl = "https://huggingface.co/tiyuvta/Phonon-2-ONNX",
+            description = "Fermion Phonon-2 (CC-BY-4.0), int8 ONNX export: 5.21% WER English ASR. Runs on onnxruntime. Note: the full set needs preprocessor-model.onnx, encoder-model.int8.onnx, decoder_joint-model.int8.onnx and vocab.txt from the export repo (zip them together for import)."
+        )
+    )
+
     fun findById(id: String): VoiceModelItem? {
         return gigaamModels.firstOrNull { it.id == id }
             ?: parakeetModels.firstOrNull { it.id == id }
+            ?: phononModels.firstOrNull { it.id == id }
             ?: whisperModels.firstOrNull { it.id == id }
     }
 }

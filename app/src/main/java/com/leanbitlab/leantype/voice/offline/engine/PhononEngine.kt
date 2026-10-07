@@ -4,11 +4,9 @@ package com.leanbitlab.leantype.voice.offline.engine
 import android.content.Context
 import android.os.ParcelFileDescriptor
 import android.util.Log
-import com.k2fsa.sherpa.onnx.FeatureConfig
-import com.k2fsa.sherpa.onnx.OfflineModelConfig
-import com.k2fsa.sherpa.onnx.OfflineRecognizer
-import com.k2fsa.sherpa.onnx.OfflineRecognizerConfig
-import com.k2fsa.sherpa.onnx.OfflineTransducerModelConfig
+import ai.onnxruntime.OnnxTensor
+import ai.onnxruntime.OrtEnvironment
+import ai.onnxruntime.OrtSession
 import com.k2fsa.sherpa.onnx.SileroVadModelConfig
 import com.k2fsa.sherpa.onnx.Vad
 import com.k2fsa.sherpa.onnx.VadModelConfig
@@ -19,23 +17,43 @@ import java.io.File
 import java.io.FileInputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.nio.LongBuffer
+import java.nio.IntBuffer
 import java.util.UUID
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 
-class ParakeetTdtEngine {
+/**
+ * Phonon-2 (Fermion Research, CC-BY-4.0; derivative of NVIDIA parakeet-tdt-0.6b-v3)
+ * offline engine, running the community ONNX export (tiyuvta/Phonon-2-ONNX) with
+ * onnxruntime-android.
+ *
+ * Model layout in filesDir/models/phonon/:
+ *   preprocessor-model.onnx       log-mel, 128 dims, input waveforms [B,N] float32 @16 kHz
+ *   encoder-model.int8.onnx       FastConformer, in audio_signal [B,128,T], out [B,1024,T']
+ *   decoder_joint-model.int8.onnx prediction net + joint, see decode loop below
+ *   vocab.txt                     SentencePiece-style, "id token" per line
+ *
+ * Greedy TDT decode loop follows the export's verified reference
+ * (github.com/avifenesh/phonon2-onnx README, "Decoding").
+ */
+class PhononEngine {
 
     private val nativeLock = Any()
-    @Volatile private var recognizer: OfflineRecognizer? = null
+    private var env: OrtEnvironment? = null
+    private var preprocessSession: OrtSession? = null
+    private var encoderSession: OrtSession? = null
+    private var decoderJointSession: OrtSession? = null
+    @Volatile private var vocab: List<String> = emptyList()
     @Volatile private var loadedModelDirPath: String? = null
     @Volatile private var vadModelPath: String? = null
-    // Cross-segment context, persisting across sessions so a mid-sentence mic
-    // stop/start still gives the decoder the sentence's beginning (lowercase
-    // continuation instead of a fresh capitalized sentence).
+    @Volatile private var numThreads = 4
+
+    // Cross-segment context (same rationale as ParakeetTdtEngine).
     @Volatile private var previousTail = FloatArray(0)
     @Volatile private var previousTailTranscript = ""
-    private val contextTailSamples = 16000 * 4 // 4 s of previous-segment audio
+    private val contextTailSamples = 16000 * 4
 
     private class FloatBuffer(initialCapacity: Int = 16000 * 10) {
         private var data = FloatArray(initialCapacity)
@@ -54,9 +72,7 @@ class ParakeetTdtEngine {
             System.arraycopy(data, offset, window, 0, length)
         }
 
-        fun toFloatArray(): FloatArray {
-            return data.copyOf(size)
-        }
+        fun toFloatArray(): FloatArray = data.copyOf(size)
 
         fun removeFirst(count: Int) {
             if (count >= size) {
@@ -85,23 +101,25 @@ class ParakeetTdtEngine {
         val running: AtomicBoolean = AtomicBoolean(true),
         val cancelled: AtomicBoolean = AtomicBoolean(false)
     )
+
     @Volatile private var activeSession: SessionState? = null
 
     private val audioExecutor = Executors.newSingleThreadExecutor { r ->
-        Thread(r, "ParakeetAudioReaderThread").apply {
+        Thread(r, "PhononAudioReaderThread").apply {
             priority = Thread.NORM_PRIORITY + 1
             isDaemon = true
         }
     }
 
     private val decoderExecutor = Executors.newSingleThreadExecutor { r ->
-        Thread(r, "ParakeetDecoderThread").apply {
-            priority = Thread.NORM_PRIORITY
+        Thread(r, "PhononDecoderThread").apply {
+            priority = Thread.NORM_PRIORITY + 1
             isDaemon = true
         }
     }
 
-    fun isModelLoaded(): Boolean = recognizer != null
+    fun isModelLoaded(): Boolean =
+        synchronized(nativeLock) { encoderSession != null && decoderJointSession != null && preprocessSession != null }
 
     fun loadModel(modelDir: File, context: Context? = null): Boolean {
         if (!modelDir.exists() || !modelDir.isDirectory) {
@@ -110,17 +128,29 @@ class ParakeetTdtEngine {
         }
 
         synchronized(nativeLock) {
-            if (recognizer != null && loadedModelDirPath == modelDir.absolutePath) {
-                return true
+            if (isModelLoaded() && loadedModelDirPath == modelDir.absolutePath) return true
+
+            val preprocessFile = File(modelDir, "preprocessor-model.onnx").takeIf { it.isFile && it.length() > 0 }
+            val encoderFile = findModelFile(modelDir, listOf("encoder-model.int8.onnx", "encoder-model.onnx"))
+            val decoderJointFile = findModelFile(modelDir, listOf("decoder_joint-model.int8.onnx", "decoder_joint-model.onnx"))
+            val vocabFile = File(modelDir, "vocab.txt").takeIf { it.isFile && it.length() > 0 }
+
+            if (preprocessFile == null || encoderFile == null || decoderJointFile == null || vocabFile == null) {
+                Log.e(TAG, "Missing required Phonon-2 ONNX model components in ${modelDir.absolutePath}")
+                return false
             }
 
-            val encoderFile = findModelFile(modelDir, listOf("encoder.int8.onnx", "encoder.fp16.onnx", "encoder.onnx", "model.int8.onnx", "gigaam_v3_e2e_rnnt_encoder_int8.onnx"))
-            val decoderFile = findModelFile(modelDir, listOf("decoder.int8.onnx", "decoder.onnx", "gigaam_v3_e2e_rnnt_decoder.onnx"))
-            val joinerFile = findModelFile(modelDir, listOf("joiner.int8.onnx", "joiner.onnx", "gigaam_v3_e2e_rnnt_joint.onnx", "joint.onnx"))
-            val tokensFile = findModelFile(modelDir, listOf("tokens.txt", "gigaam_v3_e2e_rnnt_tokens.txt"))
-
-            if (encoderFile == null || tokensFile == null) {
-                Log.e(TAG, "Missing required Transducer/GigaAM ONNX model components in ${modelDir.absolutePath}")
+            val newVocab = try {
+                vocabFile.readLines().mapNotNull { line ->
+                    val idx = line.lastIndexOf(' ')
+                    if (idx <= 0) null else line.substring(idx + 1)
+                }
+            } catch (t: Throwable) {
+                Log.e(TAG, "Failed to read vocab.txt", t)
+                return false
+            }
+            if (newVocab.size != 8193) {
+                Log.e(TAG, "Unexpected vocab size ${newVocab.size}, expected 8193")
                 return false
             }
 
@@ -129,51 +159,43 @@ class ParakeetTdtEngine {
                 vadFile = extractVadAssetIfNeeded(context)
             }
             vadModelPath = vadFile?.absolutePath
-            Log.i(TAG, "VAD model path: $vadModelPath")
 
             releaseContextSync()
 
             return try {
-                val transducerConfig = OfflineTransducerModelConfig(
-                    encoder = encoderFile.absolutePath,
-                    decoder = decoderFile?.absolutePath ?: "",
-                    joiner = joinerFile?.absolutePath ?: ""
-                )
-                val modelConfig = OfflineModelConfig().apply {
-                    transducer = transducerConfig
-                    tokens = tokensFile.absolutePath
-                    numThreads = 4
-                    provider = "cpu"
-                    modelType = "nemo_transducer"
+                val ortEnv = OrtEnvironment.getEnvironment()
+                val opts = OrtSession.SessionOptions().apply {
+                    // NNAPI/XNNPACK left out deliberately: int8 dynamic-quant graphs
+                    // from the export run on the CPU EP; extra EPs risk silent
+                    // fallback or unsupported-op failures on the 614 MB encoder.
+                    setIntraOpNumThreads(numThreads)
                 }
-                val recConfig = OfflineRecognizerConfig().apply {
-                    featConfig = FeatureConfig(sampleRate = 16000, featureDim = 80)
-                    this.modelConfig = modelConfig
-                    decodingMethod = "greedy_search"
-                }
-                recognizer = OfflineRecognizer(null, recConfig)
+                preprocessSession = ortEnv.createSession(preprocessFile.absolutePath, opts)
+                encoderSession = ortEnv.createSession(encoderFile.absolutePath, opts)
+                decoderJointSession = ortEnv.createSession(decoderJointFile.absolutePath, opts)
+                env = ortEnv
+                vocab = newVocab
                 loadedModelDirPath = modelDir.absolutePath
-                Log.i(TAG, "Transducer model loaded successfully from ${modelDir.name}")
+                Log.i(TAG, "Phonon-2 models loaded from ${modelDir.name} (vocab ${newVocab.size}, VAD ${vadModelPath != null})")
                 true
             } catch (t: Throwable) {
-                Log.e(TAG, "Exception initializing Parakeet TDT native engine", t)
-                recognizer = null
-                loadedModelDirPath = null
+                Log.e(TAG, "Exception initializing Phonon-2 native engine", t)
+                releaseContextSync()
                 false
             }
         }
     }
 
+    fun setNumThreads(threads: Int) {
+        numThreads = threads.coerceIn(1, 8)
+    }
+
     private fun extractVadAssetIfNeeded(context: Context): File? {
         val dest = File(context.filesDir, "silero_vad.onnx")
-        if (dest.exists() && dest.length() > 0) {
-            return dest
-        }
+        if (dest.exists() && dest.length() > 0) return dest
         return try {
             context.assets.open("silero_vad.onnx").use { input ->
-                dest.outputStream().use { output ->
-                    input.copyTo(output)
-                }
+                dest.outputStream().use { output -> input.copyTo(output) }
             }
             if (dest.exists() && dest.length() > 0) dest else null
         } catch (t: Throwable) {
@@ -192,21 +214,17 @@ class ParakeetTdtEngine {
 
     fun releaseContext() {
         cancelSession()
-        decoderExecutor.execute {
-            releaseContextSync()
-        }
+        decoderExecutor.execute { releaseContextSync() }
     }
 
     private fun releaseContextSync() {
         synchronized(nativeLock) {
-            recognizer?.let {
-                try {
-                    it.release()
-                } catch (t: Throwable) {
-                    Log.e(TAG, "Error releasing OfflineRecognizer", t)
-                }
-            }
-            recognizer = null
+            try { preprocessSession?.close() } catch (_: Throwable) {}
+            try { encoderSession?.close() } catch (_: Throwable) {}
+            try { decoderJointSession?.close() } catch (_: Throwable) {}
+            preprocessSession = null
+            encoderSession = null
+            decoderJointSession = null
             loadedModelDirPath = null
         }
     }
@@ -224,35 +242,25 @@ class ParakeetTdtEngine {
         callback: IVoiceCallback,
         config: VoiceSessionConfig?
     ) {
-        val currentRecognizer = recognizer
-        if (currentRecognizer == null) {
+        val hasModels = isModelLoaded()
+        if (!hasModels) {
             try { audioInput.close() } catch (_: Throwable) {}
-            callback.onError(VoiceConstants.VOICE_ERROR_MODEL_MISSING, "Parakeet TDT model not loaded")
+            callback.onError(VoiceConstants.VOICE_ERROR_MODEL_MISSING, "Phonon-2 model not loaded")
             return
         }
 
-        // Abort previous session before starting new one
         cancelSession()
 
         val session = SessionState(config?.sessionId ?: UUID.randomUUID().toString())
         activeSession = session
 
-        // Initialize VAD for this session if model is available
-        // Silero VAD tuned for phone mic dictation:
-        // - threshold 0.5: upstream default, robust on phone mics
-        // - minSilenceDuration 2.0s: thinking pauses must not split an utterance;
-        //   only a real sentence end (or EOF) finalizes a segment. Upstream offline
-        //   default is 0.1s, streaming turn-detection uses 0.5-1.0s; dictation needs more.
-        // - minSpeechDuration 0.1s: catches short monosyllabic words (to, a, I, so)
-        // - maxSpeechDuration 25.0s: more context per decode before a forced split,
-        //   which loses cross-segment context (casing/punctuation drift, missed words)
+        config?.cpuThreads?.let { if (it in 1..8) numThreads = it }
+
         val currentVadConfig = vadModelPath?.let { path ->
             try {
                 VadModelConfig().apply {
                     sileroVadModelConfig = SileroVadModelConfig(
                         model = path,
-                        // - threshold 0.35: borderline frames (breathy/quiet English speech on phone mic)
-                        //   stay classified as speech, preventing premature silence -> segment splits
                         threshold = 0.35f,
                         minSilenceDuration = 2.5f,
                         minSpeechDuration = 0.1f,
@@ -260,7 +268,6 @@ class ParakeetTdtEngine {
                         maxSpeechDuration = 25.0f
                     )
                     sampleRate = 16000
-                    numThreads = 1
                     provider = "cpu"
                     debug = false
                 }
@@ -293,15 +300,9 @@ class ParakeetTdtEngine {
             var consecutiveSilenceSamples = 0
 
             try {
-                // A new session is a new dictation: never carry audio/text from a
-                // previous session into this one (leaked old speech got prefixed
-                // to the first segment when dictating into another app).
-                previousTail = FloatArray(0)
-                previousTailTranscript = ""
                 callback.onSessionStarted()
 
                 inputStream = FileInputStream(audioInput.fileDescriptor)
-                // 100ms frames: 1600 samples = 3200 bytes @ 16kHz 16-bit mono
                 val chunkSize = 3200
                 val byteBuffer = ByteArray(chunkSize)
                 val shortBuffer = ShortArray(chunkSize / 2 + 1)
@@ -341,7 +342,6 @@ class ParakeetTdtEngine {
                     buffer.append(shortBuffer, samplesRead)
 
                     if (vad != null) {
-                        // VAD mode: process audio in 512-sample frames
                         while (vadOffset + windowSize <= buffer.size && !session.cancelled.get()) {
                             buffer.copyWindow(vadOffset, window)
                             vad.acceptWaveform(window)
@@ -352,8 +352,6 @@ class ParakeetTdtEngine {
                             vadOffset += windowSize
                         }
 
-                        // Pre-roll management: discard initial silence before speech starts, retaining ~480ms context
-                        // Dropping in exact multiples of windowSize (512) preserves strict window alignment
                         if (!speechStarted) {
                             val maxPreRoll = 15 * windowSize
                             if (buffer.size > maxPreRoll) {
@@ -366,8 +364,9 @@ class ParakeetTdtEngine {
                             }
                         }
 
-                        // Periodic partial decoding during ongoing speech (every 400ms = 6400 samples)
-                        if (speechStarted && (buffer.size - lastPartialSampleCount >= 6400) && !session.cancelled.get()) {
+                        // Phonon-2 decode is heavy (~0.5-1 s per 25 s segment on a phone);
+                        // partial interval widened to 1.2 s of audio.
+                        if (speechStarted && (buffer.size - lastPartialSampleCount >= 19200) && !session.cancelled.get()) {
                             lastPartialSampleCount = buffer.size
                             if (isPartialDecoding.compareAndSet(false, true)) {
                                 val snapshot = buffer.toFloatArray()
@@ -375,7 +374,7 @@ class ParakeetTdtEngine {
                                 decoderExecutor.execute {
                                     try {
                                         if (session.running.get() && !session.cancelled.get() && currentSegmentId.get() == targetSegId) {
-                                            val partialText = decodeWaveform(currentRecognizer, snapshot)
+                                            val partialText = decodeWaveform(snapshot)
                                             if (partialText.isNotEmpty() && partialText != lastEmittedPartial && currentSegmentId.get() == targetSegId && !session.cancelled.get()) {
                                                 lastEmittedPartial = partialText
                                                 callback.onPartial(partialText)
@@ -388,10 +387,8 @@ class ParakeetTdtEngine {
                             }
                         }
 
-                        // Segment finalization: VAD detected natural speech pause or maxSpeechDuration
                         while (!vad.empty() && !session.cancelled.get()) {
                             val segment = vad.front()
-                            // CRITICAL: Extract samples BEFORE vad.pop() to prevent reading freed native memory
                             val segSamples = segment.samples
                             vad.pop()
 
@@ -402,25 +399,20 @@ class ParakeetTdtEngine {
                                 val contextTranscript = previousTailTranscript
                                 decoderExecutor.execute {
                                     if (session.running.get() && !session.cancelled.get()) {
-                                        val fullText = decodeWaveform(currentRecognizer, contextForDecode + segSamples)
+                                        val fullText = decodeWaveform(contextForDecode + segSamples)
                                         val committedText = if (contextForDecode.isEmpty()) fullText
-                                            else stripContextOverlap(fullText, contextTranscript)
+                                        else stripContextOverlap(fullText, contextTranscript)
                                         val textToEmit = if (committedText.isNotEmpty()) committedText else fallback
                                         if (textToEmit.isNotEmpty() && !session.cancelled.get()) {
                                             Log.i(TAG, "Segment committed via VAD (${segSamples.size} samples, ctx ${contextForDecode.size}): '$textToEmit'")
                                             callback.onFinal(textToEmit)
                                         }
-                                        // Store the transcript of the exact audio kept as context (tail only),
-                                        // so the next stripContextOverlap prefix-matches precisely.
-                                        previousTailTranscript = decodeWaveform(currentRecognizer, previousTail)
+                                        previousTailTranscript = decodeWaveform(previousTail)
                                     }
                                 }
                                 previousTail = segSamples.takeLast(minOf(segSamples.size, contextTailSamples)).toFloatArray()
                             }
 
-                            // Keep the last ~1.5 s of buffered audio (silence + any quiet
-                            // trailing words the VAD classified as non-speech) so the next
-                            // segment does not lose them; drop the rest.
                             val keepTail = 24000
                             if (buffer.size > keepTail) {
                                 buffer.removeFirst(buffer.size - keepTail)
@@ -431,7 +423,7 @@ class ParakeetTdtEngine {
                             lastEmittedPartial = ""
                         }
                     } else {
-                        // Energy-based fallback mode when VAD model is unavailable
+                        // Energy-based fallback
                         var sum = 0.0
                         for (i in 0 until samplesRead) {
                             val s = shortBuffer[i].toDouble()
@@ -461,22 +453,22 @@ class ParakeetTdtEngine {
                             currentSegmentId.incrementAndGet()
                             val contextForDecode = previousTail
                             val contextTranscript = previousTailTranscript
-                            val fullText = decodeWaveform(currentRecognizer, contextForDecode + segSamples)
+                            val fullText = decodeWaveform(contextForDecode + segSamples)
                             val committedText = if (contextForDecode.isEmpty()) fullText
-                                else stripContextOverlap(fullText, contextTranscript)
+                            else stripContextOverlap(fullText, contextTranscript)
                             val textToEmit = if (committedText.isNotEmpty()) committedText else lastEmittedPartial
                             if (textToEmit.isNotEmpty() && !session.cancelled.get()) {
                                 Log.i(TAG, "Segment committed via RMS fallback (${segSamples.size} samples, ctx ${contextForDecode.size}): '$textToEmit'")
                                 callback.onFinal(textToEmit)
                             }
                             previousTail = segSamples.takeLast(minOf(segSamples.size, contextTailSamples)).toFloatArray()
-                            previousTailTranscript = decodeWaveform(currentRecognizer, previousTail)
+                            previousTailTranscript = decodeWaveform(previousTail)
                             buffer.clear()
                             speechStarted = false
                             consecutiveSilenceSamples = 0
                             lastPartialSampleCount = 0
                             lastEmittedPartial = ""
-                        } else if (speechStarted && (buffer.size - lastPartialSampleCount >= 4800) && !session.cancelled.get()) {
+                        } else if (speechStarted && (buffer.size - lastPartialSampleCount >= 9600) && !session.cancelled.get()) {
                             lastPartialSampleCount = buffer.size
                             if (isPartialDecoding.compareAndSet(false, true)) {
                                 val snapshot = buffer.toFloatArray()
@@ -484,7 +476,7 @@ class ParakeetTdtEngine {
                                 decoderExecutor.execute {
                                     try {
                                         if (session.running.get() && !session.cancelled.get() && currentSegmentId.get() == targetSegId) {
-                                            val partialText = decodeWaveform(currentRecognizer, snapshot)
+                                            val partialText = decodeWaveform(snapshot)
                                             if (partialText.isNotEmpty() && partialText != lastEmittedPartial && currentSegmentId.get() == targetSegId && !session.cancelled.get()) {
                                                 lastEmittedPartial = partialText
                                                 callback.onPartial(partialText)
@@ -514,7 +506,7 @@ class ParakeetTdtEngine {
                                 val fallback = lastEmittedPartial
                                 decoderExecutor.execute {
                                     if (session.running.get() && !session.cancelled.get()) {
-                                        val committedText = decodeWaveform(currentRecognizer, segSamples)
+                                        val committedText = decodeWaveform(segSamples)
                                         val textToEmit = if (committedText.isNotEmpty()) committedText else fallback
                                         if (textToEmit.isNotEmpty() && !session.cancelled.get()) {
                                             Log.i(TAG, "Final flush segment committed via VAD: '$textToEmit'")
@@ -530,7 +522,7 @@ class ParakeetTdtEngine {
                             val fallback = lastEmittedPartial
                             decoderExecutor.execute {
                                 if (session.running.get() && !session.cancelled.get()) {
-                                    val committedText = decodeWaveform(currentRecognizer, remainingSamples)
+                                    val committedText = decodeWaveform(remainingSamples)
                                     val textToEmit = if (committedText.isNotEmpty()) committedText else fallback
                                     if (textToEmit.isNotEmpty() && !session.cancelled.get()) {
                                         Log.i(TAG, "Final lingering segment committed: '$textToEmit'")
@@ -546,7 +538,7 @@ class ParakeetTdtEngine {
                             val fallback = lastEmittedPartial
                             decoderExecutor.execute {
                                 if (session.running.get() && !session.cancelled.get()) {
-                                    val committedText = decodeWaveform(currentRecognizer, finalSamples)
+                                    val committedText = decodeWaveform(finalSamples)
                                     val textToEmit = if (committedText.isNotEmpty()) committedText else fallback
                                     if (textToEmit.isNotEmpty() && !session.cancelled.get()) {
                                         Log.i(TAG, "Final session commit via RMS fallback: '$textToEmit'")
@@ -557,7 +549,6 @@ class ParakeetTdtEngine {
                         }
                     }
 
-                    // Complete session notification strictly after all pending decodes finish on decoderExecutor
                     decoderExecutor.execute {
                         if (!session.cancelled.get()) {
                             try { callback.onSessionEnded() } catch (_: Throwable) {}
@@ -565,12 +556,10 @@ class ParakeetTdtEngine {
                     }
                 }
             } catch (t: Throwable) {
-                Log.e(TAG, "Parakeet TDT audio stream error", t)
-                if (!session.cancelled.get()) {
-                    try {
-                        callback.onError(VoiceConstants.VOICE_ERROR_AUDIO_START_FAILED, t.message ?: "Streaming error")
-                    } catch (_: Throwable) {}
-                }
+                Log.e(TAG, "Phonon-2 audio stream error", t)
+                try {
+                    callback.onError(VoiceConstants.VOICE_ERROR_AUDIO_START_FAILED, t.message ?: "Streaming error")
+                } catch (_: Throwable) {}
             } finally {
                 session.running.set(false)
                 if (activeSession === session) {
@@ -585,20 +574,158 @@ class ParakeetTdtEngine {
         }
     }
 
-    private fun decodeWaveform(rec: OfflineRecognizer, samples: FloatArray): String {
+    // --- ONNX decoding -----------------------------------------------------
+
+    private class OrtException(message: String) : Exception(message)
+
+    private fun requireEnv(): OrtEnvironment =
+        env ?: throw OrtException("ORT environment not initialized")
+
+    private fun requireSessions(): Triple<OrtSession, OrtSession, OrtSession> {
+        val p = preprocessSession ?: throw OrtException("preprocessor not loaded")
+        val e = encoderSession ?: throw OrtException("encoder not loaded")
+        val d = decoderJointSession ?: throw OrtException("decoder_joint not loaded")
+        return Triple(p, e, d)
+    }
+
+    /** Greedy TDT decode of a 16 kHz mono float waveform in [-1, 1]. */
+    private fun decodeWaveformImpl(samples: FloatArray): String {
+        val (pre, enc, dec) = requireSessions()
+        val ortEnv = requireEnv()
+        val t0 = System.currentTimeMillis()
+
+        // 1. Preprocessor: waveforms [1,N] float32, waveforms_lens [1] int64
+        val features: FloatArray
+        val numFeatFrames: Long
+        OnnxTensor.createTensor(ortEnv, java.nio.FloatBuffer.wrap(samples), longArrayOf(1, samples.size.toLong())).use { w ->
+            OnnxTensor.createTensor(ortEnv, LongBuffer.wrap(longArrayOf(samples.size.toLong())), longArrayOf(1)).use { wl ->
+                pre.run(mapOf("waveforms" to w, "waveforms_lens" to wl)).use { out ->
+                    @Suppress("UNCHECKED_CAST")
+                    val featTensor = out["features"].get() as OnnxTensor
+                    val shape = featTensor.info.shape // [1, 128, F]
+                    val f = shape[2].toInt()
+                    val buf = featTensor.floatBuffer
+                    features = FloatArray(128 * f)
+                    buf.get(features)
+                    numFeatFrames = f.toLong()
+                }
+            }
+        }
+
+        // 2. Encoder: audio_signal [1,128,F], length [1] int64 -> [1,1024,T']
+        val encoded: FloatArray
+        val numEncFrames: Int
+        OnnxTensor.createTensor(ortEnv, java.nio.FloatBuffer.wrap(features), longArrayOf(1, 128, numFeatFrames)).use { a ->
+            OnnxTensor.createTensor(ortEnv, LongBuffer.wrap(longArrayOf(numFeatFrames)), longArrayOf(1)).use { l ->
+                enc.run(mapOf("audio_signal" to a, "length" to l)).use { out ->
+                    @Suppress("UNCHECKED_CAST")
+                    val encTensor = out["outputs"].get() as OnnxTensor
+                    val shape = encTensor.info.shape // [1, 1024, T']
+                    val t = shape[2].toInt()
+                    val buf = encTensor.floatBuffer
+                    encoded = FloatArray(1024 * t)
+                    buf.get(encoded)
+                    numEncFrames = t
+                }
+            }
+        }
+        val tEnc = System.currentTimeMillis()
+
+        // 3. Greedy TDT loop over decoder_joint
+        val vocabLocal = vocab
+        val sb = StringBuilder()
+        var h = FloatArray(2 * 640) // [2,1,640] flattened
+        var c = FloatArray(2 * 640)
+        var last = 8192
+        var t = 0
+        var nsym = 0
+        val outBuf = FloatArray(8198)
+
+        while (t < numEncFrames) {
+            val frame = FloatArray(1024)
+            System.arraycopy(encoded, t * 1024, frame, 0, 1024)
+
+            var newH = h
+            var newC = c
+            OnnxTensor.createTensor(ortEnv, java.nio.FloatBuffer.wrap(frame), longArrayOf(1, 1024, 1)).use { eo ->
+                OnnxTensor.createTensor(ortEnv, java.nio.IntBuffer.wrap(intArrayOf(last)), longArrayOf(1, 1)).use { tg ->
+                    OnnxTensor.createTensor(ortEnv, java.nio.IntBuffer.wrap(intArrayOf(1)), longArrayOf(1)).use { tl ->
+                        OnnxTensor.createTensor(ortEnv, java.nio.FloatBuffer.wrap(h), longArrayOf(2, 1, 640)).use { hs1 ->
+                            OnnxTensor.createTensor(ortEnv, java.nio.FloatBuffer.wrap(c), longArrayOf(2, 1, 640)).use { hs2 ->
+                                dec.run(mapOf(
+                                    "encoder_outputs" to eo,
+                                    "targets" to tg,
+                                    "target_length" to tl,
+                                    "input_states_1" to hs1,
+                                    "input_states_2" to hs2
+                                )).use { out ->
+                                    @Suppress("UNCHECKED_CAST")
+                                    val o = out["outputs"].get() as OnnxTensor
+                                    o.floatBuffer.get(outBuf)
+                                    @Suppress("UNCHECKED_CAST")
+                                    val hsOut1 = out["output_states_1"].get() as OnnxTensor
+                                    newH = FloatArray(2 * 640)
+                                    hsOut1.floatBuffer.get(newH)
+                                    @Suppress("UNCHECKED_CAST")
+                                    val hsOut2 = out["output_states_2"].get() as OnnxTensor
+                                    newC = FloatArray(2 * 640)
+                                    hsOut2.floatBuffer.get(newC)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            var bestTok = 0
+            var bestVal = outBuf[0]
+            for (i in 1 until 8193) {
+                if (outBuf[i] > bestVal) {
+                    bestVal = outBuf[i]
+                    bestTok = i
+                }
+            }
+            var bestDur = 0
+            var bestDurVal = outBuf[8193]
+            for (i in 8194 until 8198) {
+                if (outBuf[i] > bestDurVal) {
+                    bestDurVal = outBuf[i]
+                    bestDur = i - 8193
+                }
+            }
+            var dur = bestDur
+            if (bestTok == 8192 && dur == 0) dur = 1
+            Log.d(TAG, "TDT frame $t: tok=$bestTok piece='${if (bestTok < vocabLocal.size) vocabLocal[bestTok] else "?"}' dur=$bestDur top=${outBuf[bestTok]}")
+            if (bestTok != 8192) {
+                val piece = vocabLocal[bestTok]
+                if (!piece.startsWith("<")) sb.append(piece)
+                last = bestTok
+                h = newH
+                c = newC
+            }
+            if (dur == 0) {
+                nsym++
+                if (nsym >= 10) {
+                    dur = 1
+                    nsym = 0
+                }
+            } else {
+                nsym = 0
+            }
+            t += dur
+        }
+
+        val text = sb.toString().replace("\u2581", " ").replace(Regex("\\s+"), " ").trim()
+        val t1 = System.currentTimeMillis()
+        Log.i(TAG, "Decode: ${samples.size / 16000.0}s audio, enc ${tEnc - t0} ms, tdt ${t1 - tEnc} ms, ${numEncFrames} frames, text='$text'")
+        return text
+    }
+
+    fun decodeWaveform(samples: FloatArray): String {
         if (samples.isEmpty()) return ""
         return synchronized(nativeLock) {
             try {
-                val stream = rec.createStream()
-                try {
-                    stream.acceptWaveform(samples, 16000)
-                    rec.decode(stream)
-                    val result = rec.getResult(stream)
-                    val raw = result.text.trim()
-                    raw.replace("\u2581", " ").replace(Regex("\\s+"), " ").trim()
-                } finally {
-                    try { stream.release() } catch (_: Throwable) {}
-                }
+                decodeWaveformImpl(samples)
             } catch (t: Throwable) {
                 Log.e(TAG, "decodeWaveform error", t)
                 ""
@@ -608,10 +735,8 @@ class ParakeetTdtEngine {
 
     /**
      * When decoding [contextTail + segment], the transcript includes the context
-     * audio's words too. The context tail is the tail of the previously committed
-     * segment, whose committed transcript is [contextTranscript]. Strip that
-     * transcript's words from the front of the combined text; tolerate minor
-     * re-punctuation differences by comparing normalized words.
+     * audio's words too; strip them from the front of the combined text.
+     * Mirrors ParakeetTdtEngine.stripContextOverlap.
      */
     private fun stripContextOverlap(fullText: String, contextTranscript: String): String {
         if (contextTranscript.isBlank()) return fullText
@@ -619,16 +744,11 @@ class ParakeetTdtEngine {
         val ctxWords = norm(contextTranscript)
         if (ctxWords.isEmpty()) return fullText
         val fullWords = fullText.split(Regex("\\s+")).filter { it.isNotEmpty() }
-        // Try to match as many leading context words as the combined decode actually
-        // reproduced (the tail words may not all appear if the boundary re-decoded differently).
         var matched = 0
         val normFull = norm(fullText)
         var i = 0
         while (i < ctxWords.size && i < normFull.size && normFull[i] == ctxWords[i]) { matched++; i++ }
-        // matched == ctxWords.size normally; fall back to longest common prefix which
-        // is at least a partial overlap. Never strip more than the context length.
         if (matched == 0) return fullText
-        // Map stripped word count onto the original (punctuated) tokens
         var remaining = matched
         val result = fullWords.dropWhile { w ->
             val isWord = w.any { it.isLetterOrDigit() }
@@ -638,6 +758,6 @@ class ParakeetTdtEngine {
     }
 
     companion object {
-        private const val TAG = "ParakeetTdtEngine"
+        private const val TAG = "PhononEngine"
     }
 }

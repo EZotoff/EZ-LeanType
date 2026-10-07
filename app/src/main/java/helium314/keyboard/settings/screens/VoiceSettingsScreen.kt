@@ -143,6 +143,11 @@ fun VoiceSettingsScreen(
                 ?: if (installedParakeetPref != null) ModelState(VoiceConstants.ENGINE_PARAKEET, ModelState.STATE_READY, null) else null
         )
     }
+    var phononState by remember {
+        mutableStateOf<ModelState?>(
+            pluginManager.getModelState(VoiceConstants.ENGINE_PHONON)
+        )
+    }
     var showModelDownloadDialog by remember { mutableStateOf(false) }
     var showVoicePluginDialog by rememberSaveable { mutableStateOf(false) }
 
@@ -191,6 +196,7 @@ fun VoiceSettingsScreen(
             gigaamState = pluginManager.getModelState(VoiceConstants.ENGINE_GIGAAM)
             whisperState = pluginManager.getModelState(VoiceConstants.ENGINE_WHISPER)
             parakeetState = pluginManager.getModelState(VoiceConstants.ENGINE_PARAKEET)
+            phononState = pluginManager.getModelState(VoiceConstants.ENGINE_PHONON)
         } else if (!isInitialConnectionPending) {
             isPluginConnected = false
             engineInfo = null
@@ -222,6 +228,7 @@ fun VoiceSettingsScreen(
                 gigaamState = null
                 whisperState = null
                 parakeetState = null
+                phononState = null
             }
         })
         val bound = pluginManager.bindIfNeeded()
@@ -466,6 +473,7 @@ fun VoiceSettingsScreen(
                     "Auto (GigaAM for Russian, Parakeet for English, Whisper for other)" to VoiceConstants.OFFLINE_ENGINE_AUTO,
                     "GigaAM v3 (Russian SOTA, Punctuation & Casing)" to VoiceConstants.OFFLINE_ENGINE_GIGAAM,
                     "Parakeet TDT (English Only, Ultra Fast)" to VoiceConstants.OFFLINE_ENGINE_PARAKEET,
+                    "Phonon-2 (English, 690 MB ONNX, High Accuracy)" to VoiceConstants.OFFLINE_ENGINE_PHONON,
                     "Whisper (Multilingual)" to VoiceConstants.OFFLINE_ENGINE_WHISPER
                 ),
                 default = VoiceConstants.OFFLINE_ENGINE_AUTO,
@@ -587,6 +595,7 @@ fun VoiceSettingsScreen(
             gigaamState = gigaamState,
             whisperState = whisperState,
             parakeetState = parakeetState,
+            phononState = phononState,
             onRefresh = { updatePluginStatus() },
             onImportLocalFile = { engine ->
                 pendingImportEngine = engine
