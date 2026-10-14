@@ -21,7 +21,8 @@ fun TextInputPreference(
     default: String,
     @DrawableRes icon: Int = 0,
     checkTextValid: (String) -> Boolean = { true },
-    onConfirmed: (String) -> Unit = { }
+    onConfirmed: (String) -> Unit = { },
+    singleLine: Boolean = true
 ) {
     var showDialog by rememberSaveable { mutableStateOf(false) }
     val prefs = LocalContext.current.prefs()
@@ -41,7 +42,8 @@ fun TextInputPreference(
             },
             initialText = prefs.getString(setting.key, default) ?: "",
             title = { Text(setting.title) },
-            checkTextValid = checkTextValid
+            checkTextValid = checkTextValid,
+            singleLine = singleLine
         )
     }
 }

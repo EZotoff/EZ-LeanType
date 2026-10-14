@@ -11,6 +11,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.ParcelFileDescriptor
+import android.os.SystemClock
 import android.text.InputType
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
@@ -73,6 +74,8 @@ class VoiceInputManager(
     private var needsCapitalStart = true
     private var currentSegmentEmittedLength = 0
     private var lastFinalText: String? = null
+    private var lastFinalPreAi: String? = null
+    private var lastFinalTimestamp = 0L
     private var lastCommittedTrailingSpace = false
 
     private var isCurrentSessionOnline = false
@@ -167,6 +170,8 @@ class VoiceInputManager(
             needsCapitalStart = true
             currentSegmentEmittedLength = 0
             lastFinalText = null
+            lastFinalPreAi = null
+            lastFinalTimestamp = 0L
             lastPartialText = null
             lastCommittedTrailingSpace = false
             isCurrentSessionOnline = false
@@ -238,6 +243,8 @@ class VoiceInputManager(
             needsCapitalStart = true
             currentSegmentEmittedLength = 0
             lastFinalText = null
+            lastFinalPreAi = null
+            lastFinalTimestamp = 0L
             lastPartialText = null
             lastCommittedTrailingSpace = false
             isCurrentSessionOnline = true
@@ -310,7 +317,7 @@ class VoiceInputManager(
         }
 
         val threads = ims.prefs().getString(VoiceConstants.PREF_VOICE_CPU_THREADS, "4")?.toIntOrNull() ?: 4
-        val customPrompt = ims.prefs().getString(VoiceConstants.PREF_VOICE_CUSTOM_PROMPT, "")?.trim()?.takeIf { it.isNotEmpty() }
+        val customPrompt = VoiceInputPrefs.whisperPromptWithVocabulary(ims)
 
         val config = VoiceSessionConfig(
             sessionId = sessionId,
@@ -378,10 +385,23 @@ class VoiceInputManager(
                 Log.i(TAG, "Received onSessionEnded, state=$state")
                 mainHandler.post {
                     if (activeSessionId == sessionId) {
+                        // If the engine never emitted a final for the pending
+                        // segment (observed with Phonon when stopping without
+                        // a trailing pause), promote the last partial preview
+                        // to a final commit so the text (and its AI refine)
+                        // is not silently dropped.
+                        val pending = lastPartialText
+                        if (pending != null && currentSegmentEmittedLength > 0) {
+                            Log.i(TAG, "onSessionEnded without final: promoting partial '$pending'")
+                            syncRecognizedText(pending, isFinal = true)
+                        }
                         val ic = ims.currentInputConnection
                         if (ic != null && currentSegmentEmittedLength > 0) {
                             ic.beginBatchEdit()
                             try {
+                                // Commit the streaming preview (composing region) before
+                                // ending the session so no text is lost.
+                                ic.finishComposingText()
                                 ic.commitText(" ", 1)
                             } finally {
                                 ic.endBatchEdit()
@@ -763,15 +783,80 @@ class VoiceInputManager(
 
         val isSmartPunctuationEnabled = ims.prefs().getBoolean(VoiceConstants.PREF_VOICE_SMART_PUNCTUATION, true)
         val isCommandsEnabled = ims.prefs().getBoolean(VoiceConstants.PREF_VOICE_COMMANDS_ENABLED, true)
+        val isRemoveFillersEnabled = ims.prefs().getBoolean(VoiceConstants.PREF_VOICE_REMOVE_FILLERS, true)
+        val customVocab = VoiceInputPrefs.customVocabulary(ims)
 
-        val processedRaw = if (isSmartPunctuationEnabled) {
+        var processedRaw = if (isSmartPunctuationEnabled) {
             VoiceTextProcessor.applySpokenPunctuation(rawText)
         } else {
             rawText.replace(Regex("[,.?!;:]"), "")
         }
+        if (isRemoveFillersEnabled) {
+            processedRaw = VoiceTextProcessor.removeFillers(processedRaw)
+        }
+        // Symbol conversion and vocabulary correction share the smart
+        // punctuation toggle: they are spoken-form interpretation, and users
+        // who dictate literal words ("open bracket") need an off switch.
+        // Vocabulary correction runs on finals only: it is O(words x vocab)
+        // and must not run on every streaming partial.
+        val spokenSymbolsEnabled = isSmartPunctuationEnabled
+        if (spokenSymbolsEnabled) {
+            processedRaw = SpokenSymbolProcessor.apply(processedRaw)
+        }
+        // Vocabulary strategy: with a working AI provider the corrector is
+        // OFF (double-processing hijacks common words: observed 'open' ->
+        // 'Oren' via distance-1 match) and the vocabulary is passed to the
+        // LLM prompt instead. Corrector is only the no-provider fallback.
+        val aiPostProcessing = ims.prefs().getBoolean(VoiceConstants.PREF_VOICE_AI_POST_PROCESSING, true)
+        val aiUsable = VoiceAiPostProcessor.isProviderAvailable(ims)
+        val runCorrector = customVocab.isNotEmpty() && !aiUsable
+        if (isFinal && runCorrector) {
+            processedRaw = VocabularyCorrector.correct(processedRaw, customVocab)
+        }
         val trimmed = processedRaw.trim().replace(Regex("\\s+"), " ")
 
         if (isFinal) {
+            // AI pass replaces the brittle deterministic judgment calls
+            // (vocabulary bias, symbol disambiguation, homophones) when a
+            // provider is available. Deterministic pipeline stays as fallback.
+            if (aiPostProcessing && aiUsable && trimmed.isNotEmpty()) {
+                val sessionId = activeSessionId
+                val preAiText = trimmed
+                coroutineScope.launch {
+                    val refined = VoiceAiPostProcessor.process(ims, trimmed, customVocab)
+                    VoiceAiPostProcessor.logOutcome(trimmed, refined)
+                    if (refined != null && refined != preAiText) {
+                        mainHandler.post {
+                            if (activeSessionId == sessionId) {
+                                replaceLastSegment(preAiText, refined)
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Echo guard: continuous-mode engines sometimes re-decode the tail of
+            // the previous segment and emit it as a new final (observed: 'LM' after
+            // '...Light L L M.'). Drop a short final that is a suffix of the text
+            // committed moments ago — checked against BOTH the pre-AI text and the
+            // AI-refined text (the refine rewrites the tail, so the pre-AI form is
+            // what the echo actually resembles).
+            val echoCandidates = listOfNotNull(lastFinalText, lastFinalPreAi)
+            if (echoCandidates.isNotEmpty() && trimmed.isNotEmpty() && trimmed.length <= 16 &&
+                SystemClock.elapsedRealtime() - lastFinalTimestamp < ECHO_GUARD_WINDOW_MS
+            ) {
+                val echoWords = trimmed.lowercase(Locale.ROOT).split(' ').size
+                val isEcho = echoCandidates.any { recent ->
+                    val tailWords = recent.lowercase(Locale.ROOT).split(' ', '.', ',', '!', '?')
+                        .filter { it.isNotEmpty() }
+                    tailWords.takeLast(echoWords).joinToString(" ") == trimmed.lowercase(Locale.ROOT)
+                }
+                if (isEcho) {
+                    Log.i(TAG, "Ignoring duplicate tail echo final: '$trimmed'")
+                    lastPartialText = null
+                    return
+                }
+            }
             if (isCommandsEnabled && trimmed.isNotEmpty()) {
                 val commandAction = VoiceTextProcessor.COMMANDS[trimmed.lowercase(Locale.ROOT)]
                 if (commandAction != null) {
@@ -785,6 +870,9 @@ class VoiceInputManager(
                 if (currentSegmentEmittedLength > 0) {
                     ic.beginBatchEdit()
                     try {
+                        // Keep whatever preview text was streaming (final decode came
+                        // back empty); finish the composing region to commit it.
+                        ic.finishComposingText()
                         ic.commitText(" ", 1)
                         lastCommittedTrailingSpace = true
                     } finally {
@@ -820,27 +908,18 @@ class VoiceInputManager(
 
             ic.beginBatchEdit()
             try {
-                // If there was an active partial preview on screen, replace it
-                if (currentSegmentEmittedLength > 0) {
-                    ic.deleteSurroundingText(currentSegmentEmittedLength, 0)
-                    currentSegmentEmittedLength = 0
-                }
+                // Replace the composing-region preview with the final text atomically,
+                // then finish the composing region so the text is committed.
+                ic.setComposingText(displayText, 1)
+                ic.finishComposingText()
 
-                // If starting with punctuation right after a trailing space emitted by voice,
-                // remove only that voice-added trailing space so punctuation attaches cleanly to the preceding word
-                val firstChar = displayText.first()
-                if (firstChar in ",.?!;:" && lastCommittedTrailingSpace) {
-                    val before = ic.getTextBeforeCursor(1, 0)?.toString()
-                    if (before == " ") {
-                        ic.deleteSurroundingText(1, 0)
-                    }
-                }
-
-                ic.commitText("$displayText ", 1)
+                ic.commitText(" ", 1)
                 lastCommittedTrailingSpace = true
                 val lastChar = displayText.lastOrNull()
                 needsCapitalStart = lastChar != null && lastChar in ".!?"
                 lastFinalText = displayText
+                lastFinalPreAi = trimmed
+                lastFinalTimestamp = SystemClock.elapsedRealtime()
                 lastPartialText = null
                 currentSegmentEmittedLength = 0
             } finally {
@@ -850,15 +929,6 @@ class VoiceInputManager(
             // Streaming partial update
             if (trimmed.isEmpty()) return
             if (trimmed == lastPartialText) return
-
-            // Guard against obsolete partial echos that arrive right after onFinal
-            val finalRef = lastFinalText
-            if (finalRef != null && currentSegmentEmittedLength == 0) {
-                if (trimmed == finalRef || finalRef.startsWith(trimmed)) {
-                    Log.d(TAG, "Ignoring obsolete partial echo: '$trimmed' vs final '$finalRef'")
-                    return
-                }
-            }
             lastPartialText = trimmed
 
             var displayText = if (needsCapitalStart && trimmed.isNotEmpty()) {
@@ -876,21 +946,11 @@ class VoiceInputManager(
 
             ic.beginBatchEdit()
             try {
-                // Atomically delete the previous preview of this segment and commit the new preview
-                if (currentSegmentEmittedLength > 0) {
-                    ic.deleteSurroundingText(currentSegmentEmittedLength, 0)
-                } else {
-                    // First partial of a new segment: if it starts with punctuation after a voice trailing space, attach it
-                    val firstChar = displayText.first()
-                    if (firstChar in ",.?!;:" && lastCommittedTrailingSpace) {
-                        val before = ic.getTextBeforeCursor(1, 0)?.toString()
-                        if (before == " ") {
-                            ic.deleteSurroundingText(1, 0)
-                            lastCommittedTrailingSpace = false
-                        }
-                    }
-                }
-                ic.commitText(displayText, 1)
+                // Stream the preview through a composing region: the framework replaces
+                // it atomically and editors (e.g. Gemini) handle it far better than the
+                // deleteSurroundingText + commitText pairs, which raced with the app's
+                // own field updates and made the preview disappear mid-speech.
+                ic.setComposingText(displayText, 1)
                 currentSegmentEmittedLength = displayText.length
             } finally {
                 ic.endBatchEdit()
@@ -904,9 +964,54 @@ class VoiceInputManager(
     fun onUpdateSelection(oldSelStart: Int, oldSelEnd: Int, newSelStart: Int, newSelEnd: Int, candidatesStart: Int, candidatesEnd: Int) {
     }
 
+    /**
+     * Replace the just-committed segment [original] with the AI-refined
+     * [refined] text. Uses trailing-context matching so it survives the
+     * auto-committed trailing space. No-op if the original is no longer
+     * at the cursor (user typed meanwhile).
+     */
+    private fun replaceLastSegment(original: String, refined: String) {
+        try {
+            val ic = ims.currentInputConnection ?: return
+            // Read generously; match the FULL committed segment only. Using
+            // indexOf on a short window could match mid-word and eat the
+            // word (or sentence start) before it (observed: first word of
+            // the next sentence disappearing).
+            val before = ic.getTextBeforeCursor(original.length + 8, 0)?.toString() ?: return
+            val idx = before.lastIndexOf(original)
+            if (idx < 0) {
+                Log.d(TAG, "AI refine: original segment no longer at cursor, skipping")
+                return
+            }
+            // The committed segment is followed by a trailing space; deleting
+            // before.length - idx chars must not touch the space.
+            ic.beginBatchEdit()
+            try {
+                ic.deleteSurroundingText(before.length - idx, 0)
+                ic.commitText(refined, 1)
+            } finally {
+                ic.endBatchEdit()
+            }
+            lastFinalText = refined
+            // Keep the pre-AI form in lastFinalPreAi: engine tail echoes
+            // resemble the original decode, not the refined text.
+            Log.i(TAG, "AI refined segment: '$original' -> '$refined'")
+        } catch (t: Throwable) {
+            Log.w(TAG, "AI segment replacement failed", t)
+        }
+    }
+
     private fun executeVoiceCommand(action: VoiceTextProcessor.Action, ic: InputConnection) {
         if (currentSegmentEmittedLength > 0) {
-            ic.deleteSurroundingText(currentSegmentEmittedLength, 0)
+            // The preview lives in a composing region; remove it by finishing (commit)
+            // then deleting the committed length, which is robust across editors.
+            ic.beginBatchEdit()
+            try {
+                ic.finishComposingText()
+                ic.deleteSurroundingText(currentSegmentEmittedLength, 0)
+            } finally {
+                ic.endBatchEdit()
+            }
             currentSegmentEmittedLength = 0
         }
         when (action) {
@@ -952,6 +1057,8 @@ class VoiceInputManager(
         if (ic != null && currentSegmentEmittedLength > 0) {
             ic.beginBatchEdit()
             try {
+                // Preview is a composing region: finish commits it, then delete.
+                ic.finishComposingText()
                 ic.deleteSurroundingText(currentSegmentEmittedLength, 0)
             } finally {
                 ic.endBatchEdit()
@@ -1015,6 +1122,7 @@ class VoiceInputManager(
     }
 
     companion object {
+        private const val ECHO_GUARD_WINDOW_MS = 8000L
         private const val TAG = "VoiceInputManager"
         private const val SAMPLE_RATE = 16000
         private const val FRAME_SIZE_MS = 30

@@ -63,6 +63,8 @@ import helium314.keyboard.settings.Setting
 import helium314.keyboard.settings.dialogs.PreferenceDialog
 import helium314.keyboard.settings.dialogs.VoiceModelDownloadDialog
 import helium314.keyboard.settings.filePicker
+import helium314.keyboard.settings.NextScreenIcon
+import helium314.keyboard.settings.SettingsDestination
 import helium314.keyboard.settings.preferences.ListPreference
 import helium314.keyboard.settings.preferences.Preference
 import helium314.keyboard.settings.preferences.SwitchPreference
@@ -546,6 +548,48 @@ fun VoiceSettingsScreen(
         }
     }
 
+    val aiPostProcessingSetting = remember {
+        Setting(
+            key = VoiceConstants.PREF_VOICE_AI_POST_PROCESSING,
+            title = "AI Post-Processing",
+            description = "Refine dictated text with an LLM (offline plugin, or cloud if configured): fixes mishearings and applies the custom vocabulary"
+        ) {
+            SwitchPreference(
+                setting = it,
+                default = true,
+                icon = R.drawable.ic_proofread
+            )
+        }
+    }
+
+    val removeFillersSetting = remember {
+        Setting(
+            key = VoiceConstants.PREF_VOICE_REMOVE_FILLERS,
+            title = "Remove Filler Words",
+            description = "Drop um, uh, hmm and similar fillers from dictated text"
+        ) {
+            SwitchPreference(
+                setting = it,
+                default = true,
+                icon = R.drawable.ic_settings_correction
+            )
+        }
+    }
+
+    val customVocabularySetting = remember {
+        Setting(
+            key = VoiceConstants.PREF_VOICE_CUSTOM_VOCABULARY,
+            title = "Custom Vocabulary",
+            description = "Words the recognizer should prefer. Added to the Whisper prompt and fuzzy-corrected for other engines."
+        ) {
+            Preference(
+                name = "Custom Vocabulary",
+                onClick = { SettingsDestination.navigateTo(SettingsDestination.VoiceVocabulary) },
+                icon = R.drawable.ic_edit
+            ) { NextScreenIcon() }
+        }
+    }
+
     val cpuThreadsSetting = remember {
         Setting(
             key = VoiceConstants.PREF_VOICE_CPU_THREADS,
@@ -903,6 +947,9 @@ fun VoiceSettingsScreen(
                                 cpuThreadsSetting.Preference()
                             }
                             customPromptSetting.Preference()
+                            customVocabularySetting.Preference()
+                            aiPostProcessingSetting.Preference()
+                            removeFillersSetting.Preference()
                             if (isOfflineVoiceEnabled) {
                                 whisperKeepLoadedSetting.Preference()
                             }

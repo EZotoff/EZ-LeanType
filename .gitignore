@@ -105,3 +105,8 @@ serve_apks.py
 voice-plugin-src/
 /silero_vad.onnx
 
+
+.ssh/
+.codegraph/
+.llamacpp-work/
+.plugin-work/

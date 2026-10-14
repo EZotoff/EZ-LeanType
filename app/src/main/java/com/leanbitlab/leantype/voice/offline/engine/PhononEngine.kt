@@ -307,6 +307,11 @@ class PhononEngine {
             var consecutiveSilenceSamples = 0
 
             try {
+                // A new session is a new dictation: never carry audio/text from a
+                // previous session into this one (leaked old speech got prefixed
+                // to the first segment when dictating into another app).
+                previousTail = FloatArray(0)
+                previousTailTranscript = ""
                 callback.onSessionStarted()
 
                 inputStream = FileInputStream(audioInput.fileDescriptor)
@@ -384,7 +389,7 @@ class PhononEngine {
                                             val partialText = decodeWaveform(snapshot)
                                             if (partialText.isNotEmpty() && partialText != lastEmittedPartial && currentSegmentId.get() == targetSegId && !session.cancelled.get()) {
                                                 lastEmittedPartial = partialText
-                                                callback.onPartial(partialText)
+                                                callback.onPartial(stripFillers(partialText))
                                             }
                                         }
                                     } finally {
@@ -402,8 +407,12 @@ class PhononEngine {
                             if (segSamples.isNotEmpty()) {
                                 val targetSegId = currentSegmentId.incrementAndGet()
                                 val fallback = lastEmittedPartial
+                                // Snapshot tail and compute its transcript SYNCHRONOUSLY with the
+                                // tail assignment, so transcript and audio can never describe
+                                // different segments (async decode of the field was racy).
                                 val contextForDecode = previousTail
                                 val contextTranscript = previousTailTranscript
+                                val newTail = segSamples.takeLast(minOf(segSamples.size, contextTailSamples)).toFloatArray()
                                 decoderExecutor.execute {
                                     if (session.running.get() && !session.cancelled.get()) {
                                         val fullText = decodeWaveform(contextForDecode + segSamples)
@@ -412,19 +421,20 @@ class PhononEngine {
                                         val textToEmit = if (committedText.isNotEmpty()) committedText else fallback
                                         if (textToEmit.isNotEmpty() && !session.cancelled.get()) {
                                             Log.i(TAG, "Segment committed via VAD (${segSamples.size} samples, ctx ${contextForDecode.size}): '$textToEmit'")
-                                            callback.onFinal(textToEmit)
+                                            callback.onFinal(stripFillers(textToEmit))
                                         }
-                                        previousTailTranscript = decodeWaveform(previousTail)
                                     }
                                 }
-                                previousTail = segSamples.takeLast(minOf(segSamples.size, contextTailSamples)).toFloatArray()
+                                previousTailTranscript = decodeWaveform(newTail)
+                                previousTail = newTail
                             }
 
-                            val keepTail = 24000
-                            if (buffer.size > keepTail) {
-                                buffer.removeFirst(buffer.size - keepTail)
-                            }
-                            vadOffset = buffer.size
+                            // No buffer pre-roll retention: with context carry-over active the
+                            // pre-roll overlapped the tail (same audio decoded twice). The VAD
+                            // has its own speech-pad; trailing quiet words are covered by the
+                            // tail context on the next commit.
+                            buffer.clear()
+                            vadOffset = 0
                             speechStarted = false
                             lastPartialSampleCount = 0
                             lastEmittedPartial = ""
@@ -466,7 +476,7 @@ class PhononEngine {
                             val textToEmit = if (committedText.isNotEmpty()) committedText else lastEmittedPartial
                             if (textToEmit.isNotEmpty() && !session.cancelled.get()) {
                                 Log.i(TAG, "Segment committed via RMS fallback (${segSamples.size} samples, ctx ${contextForDecode.size}): '$textToEmit'")
-                                callback.onFinal(textToEmit)
+                                callback.onFinal(stripFillers(textToEmit))
                             }
                             previousTail = segSamples.takeLast(minOf(segSamples.size, contextTailSamples)).toFloatArray()
                             previousTailTranscript = decodeWaveform(previousTail)
@@ -486,7 +496,7 @@ class PhononEngine {
                                             val partialText = decodeWaveform(snapshot)
                                             if (partialText.isNotEmpty() && partialText != lastEmittedPartial && currentSegmentId.get() == targetSegId && !session.cancelled.get()) {
                                                 lastEmittedPartial = partialText
-                                                callback.onPartial(partialText)
+                                                callback.onPartial(stripFillers(partialText))
                                             }
                                         }
                                     } finally {
@@ -511,13 +521,17 @@ class PhononEngine {
                                 flushedCount++
                                 val targetSegId = currentSegmentId.incrementAndGet()
                                 val fallback = lastEmittedPartial
+                                val contextForDecode = previousTail
+                                val contextTranscript = previousTailTranscript
                                 decoderExecutor.execute {
                                     if (session.running.get() && !session.cancelled.get()) {
-                                        val committedText = decodeWaveform(segSamples)
+                                        val fullText = decodeWaveform(contextForDecode + segSamples)
+                                        val committedText = if (contextForDecode.isEmpty()) fullText
+                                        else stripContextOverlap(fullText, contextTranscript)
                                         val textToEmit = if (committedText.isNotEmpty()) committedText else fallback
                                         if (textToEmit.isNotEmpty() && !session.cancelled.get()) {
-                                            Log.i(TAG, "Final flush segment committed via VAD: '$textToEmit'")
-                                            callback.onFinal(textToEmit)
+                                            Log.i(TAG, "Final flush segment committed via VAD (ctx ${contextForDecode.size}): '$textToEmit'")
+                                            callback.onFinal(stripFillers(textToEmit))
                                         }
                                     }
                                 }
@@ -527,13 +541,17 @@ class PhononEngine {
                             val remainingSamples = buffer.toFloatArray()
                             val targetSegId = currentSegmentId.incrementAndGet()
                             val fallback = lastEmittedPartial
+                            val contextForDecode = previousTail
+                            val contextTranscript = previousTailTranscript
                             decoderExecutor.execute {
                                 if (session.running.get() && !session.cancelled.get()) {
-                                    val committedText = decodeWaveform(remainingSamples)
+                                    val fullText = decodeWaveform(contextForDecode + remainingSamples)
+                                    val committedText = if (contextForDecode.isEmpty()) fullText
+                                    else stripContextOverlap(fullText, contextTranscript)
                                     val textToEmit = if (committedText.isNotEmpty()) committedText else fallback
                                     if (textToEmit.isNotEmpty() && !session.cancelled.get()) {
-                                        Log.i(TAG, "Final lingering segment committed: '$textToEmit'")
-                                        callback.onFinal(textToEmit)
+                                        Log.i(TAG, "Final lingering segment committed (ctx ${contextForDecode.size}): '$textToEmit'")
+                                        callback.onFinal(stripFillers(textToEmit))
                                     }
                                 }
                             }
@@ -543,13 +561,17 @@ class PhononEngine {
                             val finalSamples = buffer.toFloatArray()
                             val targetSegId = currentSegmentId.incrementAndGet()
                             val fallback = lastEmittedPartial
+                            val contextForDecode = previousTail
+                            val contextTranscript = previousTailTranscript
                             decoderExecutor.execute {
                                 if (session.running.get() && !session.cancelled.get()) {
-                                    val committedText = decodeWaveform(finalSamples)
+                                    val fullText = decodeWaveform(contextForDecode + finalSamples)
+                                    val committedText = if (contextForDecode.isEmpty()) fullText
+                                    else stripContextOverlap(fullText, contextTranscript)
                                     val textToEmit = if (committedText.isNotEmpty()) committedText else fallback
                                     if (textToEmit.isNotEmpty() && !session.cancelled.get()) {
-                                        Log.i(TAG, "Final session commit via RMS fallback: '$textToEmit'")
-                                        callback.onFinal(textToEmit)
+                                        Log.i(TAG, "Final session commit via RMS fallback (ctx ${contextForDecode.size}): '$textToEmit'")
+                                        callback.onFinal(stripFillers(textToEmit))
                                     }
                                 }
                             }
@@ -754,10 +776,25 @@ class PhononEngine {
         val ctxWords = norm(contextTranscript)
         if (ctxWords.isEmpty()) return fullText
         val fullWords = fullText.split(Regex("\\s+")).filter { it.isNotEmpty() }
-        var matched = 0
         val normFull = norm(fullText)
+        // Prefer a full prefix match; fall back to matching the TAIL words of the
+        // context (the tail audio is the END of the previous segment, so its words
+        // surface at the head of the combined decode even when the earlier context
+        // words were re-decoded differently). Zero match anywhere => emit as-is
+        // (better one leaked word than a wrongly eaten sentence).
+        var matched = 0
         var i = 0
         while (i < ctxWords.size && i < normFull.size && normFull[i] == ctxWords[i]) { matched++; i++ }
+        if (matched == 0) {
+            // Suffix-of-context match: how many trailing context words re-appear
+            // as the leading words of the combined decode.
+            var j = 0
+            while (j < ctxWords.size && j < normFull.size &&
+                normFull[j] == ctxWords[ctxWords.size - 1 - j]) { j++ }
+            // Require at least 2 matching words to avoid eating a coincidental
+            // single word (e.g. "the").
+            if (j >= 2) matched = j
+        }
         if (matched == 0) return fullText
         var remaining = matched
         val result = fullWords.dropWhile { w ->
@@ -769,5 +806,19 @@ class PhononEngine {
 
     companion object {
         private const val TAG = "PhononEngine"
+
+        // Standalone filler tokens to drop from partials and finals.
+        private val FILLER_RE = Regex(
+            "(?i)(^|\\s+)(uh|um|ah|er|hmm|mm|mhm)([.,!?;:]?)(?=\\s+|$)"
+        )
+        private val DOUBLE_SPACE_RE = Regex("\\s{2,}")
+        private val PUNCT_SPACE_PUNCT_RE = Regex("\\s+([.,!?;:])\\s+")
+
+        /** Drop standalone filler words and tidy the spaces/punctuation around them. */
+        fun stripFillers(text: String): String {
+            val noFillers = text.replace(FILLER_RE, "")
+            val s1 = noFillers.replace(PUNCT_SPACE_PUNCT_RE, "$1")
+            return DOUBLE_SPACE_RE.replace(s1, " ").trim()
+        }
     }
 }

@@ -173,7 +173,7 @@ fun createAdvancedSettings(context: Context) = listOfNotNull(
         ) { NextScreenIcon() }
     },
     Setting(context, Settings.PREF_TIMESTAMP_FORMAT, R.string.timestamp_format_title) { setting ->
-        TextInputPreference(setting, Defaults.PREF_TIMESTAMP_FORMAT) { checkTimestampFormat(it) }
+        TextInputPreference(setting, Defaults.PREF_TIMESTAMP_FORMAT, onConfirmed = { checkTimestampFormat(it) })
     },
     Setting(context, SettingsWithoutKey.DEBUG_SETTINGS, R.string.debug_settings_title) {
         Preference(
@@ -783,17 +783,17 @@ fun createAdvancedSettings(context: Context) = listOfNotNull(
             onClick = { SettingsDestination.navigateTo(SettingsDestination.CustomAIKeys) }
         ) { NextScreenIcon() }
     } else null,
-    if (BuildConfig.FLAVOR == "offline") Setting(context, SettingsWithoutKey.LOAD_OFFLINE_AI_PLUGIN, R.string.load_offline_ai_plugin, R.string.load_offline_ai_plugin_summary) {
+    Setting(context, SettingsWithoutKey.LOAD_OFFLINE_AI_PLUGIN, R.string.load_offline_ai_plugin, R.string.load_offline_ai_plugin_summary) {
         helium314.keyboard.settings.preferences.LoadOfflineAiPluginPreference(
             title = stringResource(R.string.load_offline_ai_plugin),
             summary = if (helium314.keyboard.latin.ai.OfflineAiLoader.hasPlugin(LocalContext.current)) "Plugin active (version ${helium314.keyboard.latin.ai.OfflineAiLoader.getPluginVersion(LocalContext.current) ?: "1.0"})" else stringResource(R.string.load_offline_ai_plugin_summary),
             icon = R.drawable.ic_proofread
         )
-    } else null,
-    if (BuildConfig.FLAVOR == "offline") Setting(context, SettingsWithoutKey.OFFLINE_KEEP_MODEL_LOADED, R.string.offline_keep_model_loaded_title, R.string.offline_keep_model_loaded_summary) {
+    },
+    Setting(context, SettingsWithoutKey.OFFLINE_KEEP_MODEL_LOADED, R.string.offline_keep_model_loaded_title, R.string.offline_keep_model_loaded_summary) {
         SwitchPreference(it, Defaults.PREF_OFFLINE_KEEP_MODEL_LOADED)
-    } else null,
-    if (BuildConfig.FLAVOR == "offline") Setting(context, SettingsWithoutKey.OFFLINE_MODEL_PATH, R.string.offline_model_title, R.string.offline_model_summary) { setting ->
+    },
+    Setting(context, SettingsWithoutKey.OFFLINE_MODEL_PATH, R.string.offline_model_title, R.string.offline_model_summary) { setting ->
         val context = LocalContext.current
         val service = remember { helium314.keyboard.latin.utils.ProofreadService(context) }
         var modelPath by remember { mutableStateOf(service.getModelPath()) }
@@ -987,7 +987,7 @@ fun createAdvancedSettings(context: Context) = listOfNotNull(
                 )
             }
         }
-    } else null
+    }
 ) // Close listOfNotNull
 @Composable
 private fun Preview() {

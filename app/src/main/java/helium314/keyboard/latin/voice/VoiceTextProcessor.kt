@@ -31,6 +31,31 @@ object VoiceTextProcessor {
     private val SPACE_BEFORE_PUNCT = Regex("""\s+([,;.!?])""")
     private val SPACE_AFTER_PUNCT = Regex("""([,;.!?])(?=\w)""")
 
+    // Standalone filler words to drop (English + Russian). Must be whole words,
+    // never inside real words. No lookbehind (Android ICU regex constraint, see above).
+    // "короче" intentionally NOT here: it is a real adjective ("сделай короче").
+    private val FILLER_RE = Regex(
+        """(^|\s)(uh|um|uhh|umm|ah|er|erm|hmm+|mm+|mhm|э+м+|эм|ээ)(?=[\s.,!?;:]|$)""",
+        RegexOption.IGNORE_CASE
+    )
+    private val DOUBLE_SPACE_RE = Regex(""" {2,}""")
+    private val ORPHAN_PUNCT_RE = Regex("""(^\s*[.,;:]\s*)|(\s+[.,;:](?=\s|$))""")
+
+    /** Drop standalone filler words and tidy spacing around them. */
+    fun removeFillers(raw: String): String {
+        return try {
+            var text = raw
+            // Repeatedly strip orphans left behind after filler removal.
+            repeat(2) {
+                text = ORPHAN_PUNCT_RE.replace(text, "")
+                text = FILLER_RE.replace(text) { it.groupValues[1] }
+            }
+            DOUBLE_SPACE_RE.replace(text, " ").trim(' ')
+        } catch (_: Throwable) {
+            raw
+        }
+    }
+
     val COMMANDS = mapOf(
         "new line" to Action.NEW_LINE,
         "next line" to Action.NEW_LINE,

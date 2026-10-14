@@ -194,10 +194,50 @@ class ProofreadService(private val context: Context) {
         }
     }
 
-    // Offline compatibility methods
-    fun getModelPath(): String? = null
-    fun setModelPath(path: String?) { /* No-op for standard flavor */ }
-    fun unloadModel() { /* No-op */ }
+    // Offline compatibility methods — standard flavor now supports the
+    // offline AI plugin (GGUF via OfflineAiLoader) in ADDITION to cloud.
+    // Voice AI post-processing prefers the local dictation-tuned model.
+    fun getModelPath(): String? = context.prefs().getString(KEY_OFFLINE_MODEL_PATH, null)
+
+    fun setModelPath(path: String?) {
+        context.prefs().edit().apply {
+            if (path.isNullOrBlank()) remove(KEY_OFFLINE_MODEL_PATH)
+            else putString(KEY_OFFLINE_MODEL_PATH, path)
+            apply()
+        }
+        // Unload so the next use reloads the new path.
+        try { helium314.keyboard.latin.ai.OfflineAiLoader.getProvider(context)?.unloadModel() } catch (_: Throwable) {}
+    }
+
+    fun unloadModel() {
+        try { helium314.keyboard.latin.ai.OfflineAiLoader.getProvider(context)?.unloadModel() } catch (_: Throwable) {}
+    }
+
+    /** Load the configured GGUF model. Returns false if no path or plugin. */
+    suspend fun loadOfflineModel(): Boolean {
+        val rawPath = getModelPath() ?: return false
+        val provider = helium314.keyboard.latin.ai.OfflineAiLoader.getProvider(context) ?: run {
+            Log.w("ProofreadService", "Offline AI plugin not installed")
+            return false
+        }
+        if (provider.isModelLoaded()) return true
+        return try {
+            val cores = Runtime.getRuntime().availableProcessors()
+            val threads = if (cores <= 4) cores else 4
+            // The plugin's loadModel expects a content-resolvable URI (the
+            // settings UI stores SAF Uris). A plain filesystem path fails
+            // with "No content provider". Wrap plain paths in a file:// URI;
+            // contentResolver.openInputStream handles those natively.
+            val modelUri = if (rawPath.startsWith("content:") || rawPath.startsWith("file:")) rawPath
+                else "file://$rawPath"
+            Log.i("ProofreadService", "Loading GGUF model: uri=$modelUri threads=$threads")
+            provider.loadModel(context, modelUri, threads, 2048)
+        } catch (e: Throwable) {
+            Log.e("ProofreadService", "Failed to load GGUF model", e)
+            false
+        }
+    }
+
     fun getSystemPrompt(): String = "Fix grammar and spelling"
     fun setSystemPrompt(prompt: String) { /* No-op */ }
     fun getTranslateSystemPrompt(): String = ""
@@ -921,6 +961,7 @@ class ProofreadService(private val context: Context) {
         private const val KEY_TRANSLATE_MODEL_NAME = "translate_gemini_model_name"
         private const val KEY_TARGET_LANGUAGE = "gemini_target_language"
         private const val KEY_PROVIDER = "ai_provider"
+        private const val KEY_OFFLINE_MODEL_PATH = "offline_model_path"
         private const val KEY_HF_TOKEN = "huggingface_token"
         private const val KEY_HF_MODEL = "huggingface_model"
         private const val KEY_TRANSLATE_HF_MODEL = "translate_huggingface_model"

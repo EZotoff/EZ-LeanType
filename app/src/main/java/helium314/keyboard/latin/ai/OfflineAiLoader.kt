@@ -105,6 +105,7 @@ object OfflineAiLoader {
         if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.O) return null
         val cached = activeProvider
         if (cached != null) return cached
+        android.util.Log.w(TAG, "getProvider: hasPlugin=${hasPlugin(context)} filesDir=${context.filesDir} pref=${context.prefs().getBoolean(PREF_HAS_PLUGIN, false)}")
         if (!hasPlugin(context)) return null
 
         val apkFile = File(context.filesDir, PLUGIN_FILENAME)
