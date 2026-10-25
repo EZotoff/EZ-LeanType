@@ -781,39 +781,22 @@ class VoiceInputManager(
             }
             if (!isRecording.get() && !isFinal) return
 
-        val isSmartPunctuationEnabled = ims.prefs().getBoolean(VoiceConstants.PREF_VOICE_SMART_PUNCTUATION, true)
         val isCommandsEnabled = ims.prefs().getBoolean(VoiceConstants.PREF_VOICE_COMMANDS_ENABLED, true)
-        val isRemoveFillersEnabled = ims.prefs().getBoolean(VoiceConstants.PREF_VOICE_REMOVE_FILLERS, true)
-        val customVocab = VoiceInputPrefs.customVocabulary(ims)
-
-        var processedRaw = if (isSmartPunctuationEnabled) {
-            VoiceTextProcessor.applySpokenPunctuation(rawText)
-        } else {
-            rawText.replace(Regex("[,.?!;:]"), "")
-        }
-        if (isRemoveFillersEnabled) {
-            processedRaw = VoiceTextProcessor.removeFillers(processedRaw)
-        }
-        // Symbol conversion and vocabulary correction share the smart
-        // punctuation toggle: they are spoken-form interpretation, and users
-        // who dictate literal words ("open bracket") need an off switch.
-        // Vocabulary correction runs on finals only: it is O(words x vocab)
-        // and must not run on every streaming partial.
-        val spokenSymbolsEnabled = isSmartPunctuationEnabled
-        if (spokenSymbolsEnabled) {
-            processedRaw = SpokenSymbolProcessor.apply(processedRaw)
-        }
-        // Vocabulary strategy: with a working AI provider the corrector is
-        // OFF (double-processing hijacks common words: observed 'open' ->
-        // 'Oren' via distance-1 match) and the vocabulary is passed to the
-        // LLM prompt instead. Corrector is only the no-provider fallback.
-        val aiPostProcessing = ims.prefs().getBoolean(VoiceConstants.PREF_VOICE_AI_POST_PROCESSING, true)
-        val aiUsable = VoiceAiPostProcessor.isProviderAvailable(ims)
-        val runCorrector = customVocab.isNotEmpty() && !aiUsable
-        if (isFinal && runCorrector) {
-            processedRaw = VocabularyCorrector.correct(processedRaw, customVocab)
-        }
-        val trimmed = processedRaw.trim().replace(Regex("\\s+"), " ")
+        val flags = VoiceTranscriptPipeline.StageFlags(
+            smartPunctuation = ims.prefs().getBoolean(VoiceConstants.PREF_VOICE_SMART_PUNCTUATION, true),
+            removeFillers = ims.prefs().getBoolean(VoiceConstants.PREF_VOICE_REMOVE_FILLERS, true),
+            aiPostProcessing = ims.prefs().getBoolean(VoiceConstants.PREF_VOICE_AI_POST_PROCESSING, true),
+            aiUsable = VoiceAiPostProcessor.isProviderAvailable(ims),
+            customVocab = VoiceInputPrefs.customVocabulary(ims)
+        )
+        // Spoken-form interpretation + fallback vocabulary correction. The
+        // chain lives in VoiceTranscriptPipeline, shared verbatim with the
+        // offline corpus harness — see its header for the order.
+        val trimmed = VoiceTranscriptPipeline.normalize(
+            VoiceTranscriptPipeline.preTransform(rawText, isFinal, flags)
+        )
+        val aiPostProcessing = flags.aiPostProcessing
+        val aiUsable = flags.aiUsable
 
         if (isFinal) {
             // AI pass replaces the brittle deterministic judgment calls
@@ -823,7 +806,7 @@ class VoiceInputManager(
                 val sessionId = activeSessionId
                 val preAiText = trimmed
                 coroutineScope.launch {
-                    val refined = VoiceAiPostProcessor.process(ims, trimmed, customVocab)
+                    val refined = VoiceAiPostProcessor.process(ims, trimmed, flags.customVocab)
                     VoiceAiPostProcessor.logOutcome(trimmed, refined)
                     if (refined != null && refined != preAiText) {
                         mainHandler.post {
@@ -842,23 +825,15 @@ class VoiceInputManager(
             // AI-refined text (the refine rewrites the tail, so the pre-AI form is
             // what the echo actually resembles).
             val echoCandidates = listOfNotNull(lastFinalText, lastFinalPreAi)
-            if (echoCandidates.isNotEmpty() && trimmed.isNotEmpty() && trimmed.length <= 16 &&
-                SystemClock.elapsedRealtime() - lastFinalTimestamp < ECHO_GUARD_WINDOW_MS
+            if (SystemClock.elapsedRealtime() - lastFinalTimestamp < VoiceTranscriptPipeline.ECHO_GUARD_WINDOW_MS &&
+                VoiceTranscriptPipeline.isTailEcho(trimmed, echoCandidates)
             ) {
-                val echoWords = trimmed.lowercase(Locale.ROOT).split(' ').size
-                val isEcho = echoCandidates.any { recent ->
-                    val tailWords = recent.lowercase(Locale.ROOT).split(' ', '.', ',', '!', '?')
-                        .filter { it.isNotEmpty() }
-                    tailWords.takeLast(echoWords).joinToString(" ") == trimmed.lowercase(Locale.ROOT)
-                }
-                if (isEcho) {
-                    Log.i(TAG, "Ignoring duplicate tail echo final: '$trimmed'")
-                    lastPartialText = null
-                    return
-                }
+                Log.i(TAG, "Ignoring duplicate tail echo final: '$trimmed'")
+                lastPartialText = null
+                return
             }
             if (isCommandsEnabled && trimmed.isNotEmpty()) {
-                val commandAction = VoiceTextProcessor.COMMANDS[trimmed.lowercase(Locale.ROOT)]
+                val commandAction = VoiceTranscriptPipeline.detectCommand(trimmed)
                 if (commandAction != null) {
                     executeVoiceCommand(commandAction, ic)
                     lastPartialText = null
@@ -884,27 +859,9 @@ class VoiceInputManager(
                 return
             }
 
-            var displayText = if (needsCapitalStart && trimmed.isNotEmpty()) {
-                trimmed.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString() }
-            } else {
-                trimmed
-            }
-
-            // Question mark preservation:
-            // 1. If live streaming partial had detected a question mark ('?') but offline final flipped it to '.',
-            //    preserve the question mark.
-            // 2. If the sentence begins with an interrogative starter in English or Russian and ends with '.',
-            //    convert '.' to '?'.
-            if (displayText.endsWith(".")) {
-                if (lastPartialText?.trimEnd()?.endsWith("?") == true) {
-                    displayText = displayText.dropLast(1) + "?"
-                } else {
-                    val lower = displayText.lowercase(Locale.ROOT)
-                    if (QUESTION_PREFIXES.any { lower.startsWith(it) }) {
-                        displayText = displayText.dropLast(1) + "?"
-                    }
-                }
-            }
+            // Capitalization + question-mark logic (streaming '?' preservation,
+            // interrogative-prefix flip) — shared with the corpus harness.
+            val displayText = VoiceTranscriptPipeline.finalDisplayText(trimmed, needsCapitalStart, lastPartialText)
 
             ic.beginBatchEdit()
             try {
@@ -915,8 +872,7 @@ class VoiceInputManager(
 
                 ic.commitText(" ", 1)
                 lastCommittedTrailingSpace = true
-                val lastChar = displayText.lastOrNull()
-                needsCapitalStart = lastChar != null && lastChar in ".!?"
+                needsCapitalStart = VoiceTranscriptPipeline.needsCapitalAfter(displayText)
                 lastFinalText = displayText
                 lastFinalPreAi = trimmed
                 lastFinalTimestamp = SystemClock.elapsedRealtime()
@@ -931,18 +887,7 @@ class VoiceInputManager(
             if (trimmed == lastPartialText) return
             lastPartialText = trimmed
 
-            var displayText = if (needsCapitalStart && trimmed.isNotEmpty()) {
-                trimmed.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString() }
-            } else {
-                trimmed
-            }
-
-            if (displayText.endsWith(".")) {
-                val lower = displayText.lowercase(Locale.ROOT)
-                if (QUESTION_PREFIXES.any { lower.startsWith(it) }) {
-                    displayText = displayText.dropLast(1) + "?"
-                }
-            }
+            val displayText = VoiceTranscriptPipeline.partialDisplayText(trimmed, needsCapitalStart)
 
             ic.beginBatchEdit()
             try {
@@ -1122,30 +1067,12 @@ class VoiceInputManager(
     }
 
     companion object {
-        private const val ECHO_GUARD_WINDOW_MS = 8000L
         private const val TAG = "VoiceInputManager"
         private const val SAMPLE_RATE = 16000
         private const val FRAME_SIZE_MS = 30
         private const val FRAME_SIZE_SHORTS = SAMPLE_RATE * FRAME_SIZE_MS / 1000 // 480 shorts
         private const val FRAME_SIZE_BYTES = FRAME_SIZE_SHORTS * 2 // 960 bytes
         private const val HANDSHAKE_TIMEOUT_MS = 8000L
-
-        private val QUESTION_PREFIXES = arrayOf(
-            // English question words / auxiliaries
-            "what ", "why ", "how ", "when ", "where ", "who ", "which ", "whose ", "whom ",
-            "is ", "are ", "am ", "was ", "were ", "do ", "does ", "did ",
-            "can ", "could ", "should ", "would ", "will ", "won't ", "shall ",
-            "has ", "have ", "had ", "isn't ", "aren't ", "wasn't ", "weren't ",
-            "don't ", "doesn't ", "didn't ", "can't ", "couldn't ", "shouldn't ", "wouldn't ",
-            // Russian question words / interrogatives
-            "почему ", "зачем ", "как ", "где ", "куда ", "откуда ", "когда ",
-            "кто ", "что ", "чей ", "чья ", "чье ", "чьё ", "чьи ",
-            "какой ", "какая ", "какое ", "какие ", "какого ", "какому ", "каким ",
-            "сколько ", "насколько ",
-            "правда ли ", "неужели ", "разве ",
-            "а почему ", "а зачем ", "а как ", "а где ", "а куда ", "а откуда ", "а когда ",
-            "а кто ", "а что ", "а разве ", "а правда "
-        )
 
         fun isBlockedEditor(info: EditorInfo?): Boolean {
             if (info == null) return false

@@ -1,0 +1,100 @@
+{
+  "file": "\/data\/user\/0\/com.leanbitlab.leantype\/files\/voice_harness\/wav\/B6.wav",
+  "wallMs": 61726,
+  "enginePref": "auto",
+  "smartPunctuation": true,
+  "removeFillers": true,
+  "aiPostProcessing": true,
+  "aiUsableAtStart": false,
+  "customVocab": [
+    "OC Beacon",
+    "Veran",
+    "Bruno",
+    "Mauro",
+    "Oren",
+    "Elan",
+    "ez-omo-bench",
+    "ez-omo-config",
+    "LiteLLM",
+    "Qwen",
+    "Nestor",
+    "agentic",
+    "Fabro",
+    "Comfy UI",
+    "Vercel"
+  ],
+  "finalText": "Version four point two point nine fixed three crashes and shipped on twelfth october twenty twenty six at nine forty five PM. The USB C port two monitors and about fifteen percent battery were fine. Port two monitors and about fifteen percent battery were fine. I filed LT one oh four two because the iPhone kept disconnecting from macOS over HTP \/ two on port eighty eighty. Later the same day the CIQ emptied. Bruno reviewed the OC Beacon logs and Oren shipped the fix before dinner. OC Beacon locks and Orange shipped the fix before dinner. Nobody wrote it down, which is why I am dictating this instead. The lesson is simple. When the tests are green but the phone is hot, someone else is running. ",
+  "segments": [
+    {
+      "raw": "Version four point two point nine fixed three crashes and shipped on twelfth october twenty twenty six at nine forty five PM.",
+      "trimmed": "Version four point two point nine fixed three crashes and shipped on twelfth october twenty twenty six at nine forty five PM.",
+      "display": "Version four point two point nine fixed three crashes and shipped on twelfth october twenty twenty six at nine forty five PM."
+    },
+    {
+      "raw": "The USB C port two monitors and about fifteen percent battery were fine.",
+      "trimmed": "The USB C port two monitors and about fifteen percent battery were fine.",
+      "display": "The USB C port two monitors and about fifteen percent battery were fine."
+    },
+    {
+      "raw": "port two monitors and about fifteen percent battery were fine. I filed LT one oh four two because the iPhone kept disconnecting from macOS over HTP slash two on port eighty eighty.",
+      "trimmed": "port two monitors and about fifteen percent battery were fine. I filed LT one oh four two because the iPhone kept disconnecting from macOS over HTP \/ two on port eighty eighty.",
+      "display": "Port two monitors and about fifteen percent battery were fine. I filed LT one oh four two because the iPhone kept disconnecting from macOS over HTP \/ two on port eighty eighty."
+    },
+    {
+      "raw": "Later the same day the CIQ emptied. Bruno reviewed the O C beacon logs and Orin shipped the fix before dinner.",
+      "trimmed": "Later the same day the CIQ emptied. Bruno reviewed the OC Beacon logs and Oren shipped the fix before dinner.",
+      "display": "Later the same day the CIQ emptied. Bruno reviewed the OC Beacon logs and Oren shipped the fix before dinner."
+    },
+    {
+      "raw": "OC beacon locks and Orange shipped the fix before dinner. Nobody wrote it down, which is why I am dictating this instead.",
+      "trimmed": "OC Beacon locks and Orange shipped the fix before dinner. Nobody wrote it down, which is why I am dictating this instead.",
+      "display": "OC Beacon locks and Orange shipped the fix before dinner. Nobody wrote it down, which is why I am dictating this instead."
+    },
+    {
+      "raw": "The lesson is simple. When the tests are green but the phone is hot, someone else is running.",
+      "trimmed": "The lesson is simple. When the tests are green but the phone is hot, someone else is running.",
+      "display": "The lesson is simple. When the tests are green but the phone is hot, someone else is running."
+    }
+  ],
+  "commands": [],
+  "echoDropped": [],
+  "partials": [
+    "Version four point two point",
+    "version four point two point nine",
+    "Version four point two point nine fixed three crashes",
+    "Version four point two point nine fixed three crashes and shipped on twelve",
+    "Version four point two point nine fixed three crashes and shipped on twelfth October.",
+    "Version four point two point nine fixed three crashes and shipped on twelfth October twenty twenty six at nine.",
+    "Version four point two point nine fixed three crashes and shipped on twelfth october twenty twenty six at nine forty five PM.",
+    "Version4 .2 .9,fixed3 crashes and shipped on12 October2026 at945 pm.",
+    "The USB C port to",
+    "The USB C port to monitors and about fifty.",
+    "The USB C port two monitors and about fifteen percent battery.",
+    "The USB C port two monitors and about fifteen percent battery were fine.",
+    "I filed L T",
+    "I filed L T dash one.",
+    "I filed Lt one oh four two",
+    "I filed Lt dash one oh four two because the iPhone kept",
+    "I filed Lt1042 because the iPhone kept disconnecting from Mac.",
+    "I filed Lt1042 because the iPhone kept disconnecting from macOS over",
+    "I filed Lt1042 because the iPhone kept disconnecting from macOS over HTP slash two",
+    "I filed Lt dash one oh four two because the iPhone kept disconnecting from macOS over HTP slash two on port eighty",
+    "I filed Lt1042 because the iPhone kept disconnecting from macOS over HTP2 on port8080.",
+    "I filed Lt1042 because the iPhone kept disconnecting from macOS over HTP\/2 on port8080.",
+    "Later the same day this year",
+    "Later the same day the CIQ emptied",
+    "Later the same day the CIQ emptied. Bruno reviewed",
+    "Later the same day the CIQ emptied. Bruno reviewed the O C beacon logs",
+    "Later the same day the CIQ emptied. Bruno reviewed the OC beacon locks and Orange shipped the fix",
+    "Later the same day the CIQ emptied. Bruno reviewed the O C beacon locks and Orange shipped the fix before dinner.",
+    "Later the same day the CIQ emptied. Bruno reviewed the OC beacon locks and Orange shipped the fix before dinner.",
+    "Nobody wrote it down which is",
+    "Nobody wrote it down, which is why I am dictating this",
+    "Nobody wrote it down, which is why I am dictating this instead.",
+    "The lesson is simple.",
+    "The lesson is simple. When the tests are green",
+    "The lesson is simple. When the tests are green but the phone is hot,",
+    "The lesson is simple. When the tests are green but the phone is hot, someone else",
+    "The lesson is simple. When the tests are green but the phone is hot, someone else is running."
+  ]
+}

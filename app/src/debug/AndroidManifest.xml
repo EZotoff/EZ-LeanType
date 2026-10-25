@@ -4,5 +4,14 @@
         <service
             android:name="helium314.keyboard.latin.voice.DebugVoiceEngineService"
             android:exported="false" />
+        <service
+            android:name="helium314.keyboard.latin.voice.VoiceHarnessService"
+            android:exported="false" />
+        <activity
+            android:name="helium314.keyboard.latin.voice.VoiceHarnessActivity"
+            android:exported="true"
+            android:theme="@android:style/Theme.NoDisplay"
+            android:excludeFromRecents="true"
+            android:noHistory="true" />
     </application>
 </manifest>

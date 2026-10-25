@@ -1,0 +1,87 @@
+{
+  "version": 1,
+  "note": "Golden voice corpus. spoken = verbatim text the user read into the recording (B6 variant: 'someone else is running'). expected = target output of the full dictation pipeline (ASR + text stage). checks = per-block assertions applied by score.py.",
+  "blocks": [
+    {
+      "id": "B0",
+      "file": "B0.wav",
+      "feature": "calibration",
+      "spoken": "This is LeanType voice validation, take one. The quick brown fox jumps over the lazy dog while the engine listens.",
+      "expected": "This is LeanType voice validation, take one. The quick brown fox jumps over the lazy dog while the engine listens.",
+      "checks": {
+        "contains": ["voice validation", "quick brown fox", "lazy dog"],
+        "absent": ["<think>", "\n\n\n"]
+      }
+    },
+    {
+      "id": "B1",
+      "file": "B1.wav",
+      "feature": "validation/vocabulary",
+      "spoken": "I work with Bruno and Mauro on the Veran project. We use agents Elan and Oren. I use Light LLM and OC Beacon. We also verify stuff and open PRs. I also run Agentic QA. Yesterday Veran merged my pull request and Nestor approved it.",
+      "expected": "I work with Bruno and Mauro on the Veran project. We use agents Elan and Oren. I use LiteLLM and OC Beacon. We also verify stuff and open PRs. I also run agentic QA. Yesterday Veran merged my pull request and Nestor approved it.",
+      "checks": {
+        "contains": ["Veran", "Bruno", "Mauro", "Elan", "Oren", "Nestor", "OC Beacon", "open PRs", "pull request"],
+        "absent": ["Elon", "Oran ", "Veren", "Oren PRs", "<think>"],
+        "known_limitations": ["Light LLM -> LiteLLM (needs AI provider; d2 tier misses 7-char words)"]
+      }
+    },
+    {
+      "id": "B2",
+      "file": "B2.wav",
+      "feature": "dictionary/vocabulary",
+      "spoken": "Qwen handles the reasoning, LiteLLM routes the requests, and Vercel hosts the demo. Fabro opened a ticket for ez-omo-bench because ez-omo-config lost its theme. Nestor moved the Comfy UI workflow to the new OC Beacon cluster.",
+      "expected": "Qwen handles the reasoning, LiteLLM routes the requests, and Vercel hosts the demo. Fabro opened a ticket for ez-omo-bench because ez-omo-config lost its theme. Nestor moved the Comfy UI workflow to the new OC Beacon cluster.",
+      "checks": {
+        "contains": ["Qwen", "Vercel", "Fabro", "ez-omo-bench", "ez-omo-config", "Nestor", "Comfy UI", "OC Beacon"],
+        "absent": ["Quen", "Vercel dot", "easy omo", "<think>"]
+      }
+    },
+    {
+      "id": "B3",
+      "file": "B3.wav",
+      "feature": "homophones/context",
+      "spoken": "Their deploy failed because they're out of disk, so their two options are to wait too long or write the migration right now. I accept all changes except the ones that break the build. The brake fix shipped in the first week, though the team was weak on testing. It's a peace deal: each piece of the site cites a source you can see. We open issues and open PRs every morning.",
+      "expected": "Their deploy failed because they're out of disk, so their two options are to wait too long or write the migration right now. I accept all changes except the ones that break the build. The brake fix shipped in the first week, though the team was weak on testing. It's a peace deal: each piece of the site cites a source you can see. We open issues and open PRs every morning.",
+      "checks": {
+        "contains": ["they're out of disk", "two options", "too long", "write the migration", "accept all changes except", "break the build", "peace deal", "piece of the site", "cites a source", "open issues", "open PRs"],
+        "absent": ["their out of disk", "to options", "wait to long", "right the migration", "Oren PRs", "<think>"]
+      }
+    },
+    {
+      "id": "B4",
+      "file": "B4.wav",
+      "feature": "punctuation",
+      "spoken": "The first rule is simple comma never skip the tests period. Can we ship on Friday question mark. I ordered three things colon coffee comma a charger comma and patience semicolon then I waited. Wait for it exclamation mark. The billing period ends Friday.",
+      "expected": "The first rule is simple, never skip the tests. Can we ship on Friday? I ordered three things: coffee, a charger, and patience; then I waited. Wait for it! The billing period ends Friday.",
+      "checks": {
+        "contains": ["simple, never", "tests.", "Friday?", "things: coffee", "charger,", "patience;", "waited.", "it!"],
+        "absent": [" comma", " period", " question mark", " exclamation mark", " semicolon", " colon"],
+        "known_limitations": ["trailing 'billing period' sentence: standalone spoken-word 'period' currently converts to '.' — trap documents which behavior wins"]
+      }
+    },
+    {
+      "id": "B5",
+      "file": "B5.wav",
+      "feature": "symbols/fillers/commands",
+      "spoken": "Open bracket array close bracket, then open paren count close paren. She said open quote ship it close quote twice. Try an A/B test, or a pass/fail check, and a client/server split. Uh, we should, um, replace the, er, filler words. New line.",
+      "expected": "[array], then (count). She said \"ship it\" twice. Try an A/B test, or a pass/fail check, and a client/server split. We should replace the filler words.\n",
+      "checks": {
+        "contains": ["[array]", "(count)", "\"ship it\"", "A/B", "pass/fail", "client/server", "should replace the filler words"],
+        "absent": ["open bracket", "close bracket", "open paren", "open quote", "Uh,", "um,", "er,", "<think>"],
+        "must_regex": {"newline_command": "\\n$|\\n "}
+      }
+    },
+    {
+      "id": "B6",
+      "file": "B6.wav",
+      "feature": "long-form/segmentation",
+      "spoken": "Version 4.2.9 fixed three crashes and shipped on 12 October 2026 at 9:45 PM. The USB-C port, two monitors, and about 15 percent battery were fine. I filed LT-1042 because the iPhone kept disconnecting from macOS over HTTP/2 on port 8080. Later the same day the CI queue emptied, Bruno reviewed the OC Beacon logs, and Oren shipped the fix before dinner. Nobody wrote it down, which is why I am dictating this instead. The lesson is simple: when the tests are green but the phone is hot, someone else is running.",
+      "expected": "Version 4.2.9 fixed three crashes and shipped on 12 October 2026 at 9:45 PM. The USB-C port, two monitors, and about 15 percent battery were fine. I filed LT-1042 because the iPhone kept disconnecting from macOS over HTTP/2 on port 8080. Later the same day the CI queue emptied, Bruno reviewed the OC Beacon logs, and Oren shipped the fix before dinner. Nobody wrote it down, which is why I am dictating this instead. The lesson is simple: when the tests are green but the phone is hot, someone else is running.",
+      "checks": {
+        "contains": ["USB-C", "iPhone", "macOS", "HTTP/2", "8080", "LT-1042", "OC Beacon", "Oren shipped", "someone else is running"],
+        "absent": ["<think>", "  "],
+        "known_limitations": ["digit/number formatting (4.2.9, 9:45, 2026) depends on ASR tokenization"]
+      }
+    }
+  ]
+}

@@ -1,0 +1,159 @@
+[
+  {
+    "id": "B0",
+    "feature": "calibration",
+    "wer": 0.25,
+    "checks_passed": 4,
+    "checks_failed": 1,
+    "failures": [
+      "missing: 'voice validation'"
+    ],
+    "segments": 1,
+    "commands": [],
+    "echoDropped": [],
+    "aiUsableAtStart": true,
+    "refinedCount": 0,
+    "wallMs": 15047,
+    "finalText": "Mrs. Lint I voice, validation take one. The quick brown fox jumps over the lazy dog while the engine listens.",
+    "known_limitations": []
+  },
+  {
+    "id": "B1",
+    "feature": "validation/vocabulary",
+    "wer": 0.2045,
+    "checks_passed": 10,
+    "checks_failed": 4,
+    "failures": [
+      "missing: 'Elan'",
+      "missing: 'Oren'",
+      "missing: 'OC Beacon'",
+      "forbidden present: 'Elon'"
+    ],
+    "segments": 1,
+    "commands": [],
+    "echoDropped": [],
+    "aiUsableAtStart": false,
+    "refinedCount": 0,
+    "wallMs": 25726,
+    "finalText": "I work with Bruno and Mauro on the Veron project. We use agents Elon and Oran. I use Light LM and O C beacon. We also verify stuff and open PRs. I also run Agenti QA. Yesterday Veran merged my pull request and Nestor approved it.",
+    "known_limitations": [
+      "Light LLM -> LiteLLM (needs AI provider; d2 tier misses 7-char words)"
+    ]
+  },
+  {
+    "id": "B2",
+    "feature": "dictionary/vocabulary",
+    "wer": 0.25,
+    "checks_passed": 9,
+    "checks_failed": 3,
+    "failures": [
+      "missing: 'ez-omo-bench'",
+      "missing: 'ez-omo-config'",
+      "forbidden present: 'easy omo'"
+    ],
+    "segments": 1,
+    "commands": [],
+    "echoDropped": [],
+    "aiUsableAtStart": false,
+    "refinedCount": 0,
+    "wallMs": 18945,
+    "finalText": "Qwen handles the reasoning, light LLM routes the requests, and Vercel hosts the demo. Fabro opened the ticket for Easy Omo Bench because Easy Omo Config lost its theme. Nestor moved the Comfy UI workflow to the new OC Beacon cluster.",
+    "known_limitations": []
+  },
+  {
+    "id": "B3",
+    "feature": "homophones/context",
+    "wer": 0.2083,
+    "checks_passed": 15,
+    "checks_failed": 2,
+    "failures": [
+      "missing: 'accept all changes except'",
+      "missing: 'cites a source'"
+    ],
+    "segments": 1,
+    "commands": [],
+    "echoDropped": [],
+    "aiUsableAtStart": false,
+    "refinedCount": 0,
+    "wallMs": 28429,
+    "finalText": "Their deploy failed because they're out of disk. So there are two options either wait too long or write the migration right now. Except all changes except the ones that break the build. The break fixed shipped in the first week. Though the team was weak on testing. It's a peace deal, each piece of the sites sites a source you can see. We open issues and open PRs every morning.",
+    "known_limitations": []
+  },
+  {
+    "id": "B4",
+    "feature": "punctuation",
+    "wer": 0.5882,
+    "checks_passed": 4,
+    "checks_failed": 10,
+    "failures": [
+      "missing: 'simple, never'",
+      "missing: 'tests.'",
+      "missing: 'things: coffee'",
+      "missing: 'charger,'",
+      "missing: 'patience;'",
+      "missing: 'it!'",
+      "forbidden present: ' period'",
+      "forbidden present: ' question mark'",
+      "forbidden present: ' exclamation mark'",
+      "forbidden present: ' semicolon'"
+    ],
+    "segments": 1,
+    "commands": [],
+    "echoDropped": [],
+    "aiUsableAtStart": false,
+    "refinedCount": 0,
+    "wallMs": 21263,
+    "finalText": "The first rule is simple, coma, never skip the tests period. Can I ship on Friday? question Mark. I ordered three things, Coffee, coma, a charger coma and patience, semicolon. Then I waited. Wait for it, exclamation Mark. The billing",
+    "known_limitations": [
+      "trailing 'billing period' sentence: standalone spoken-word 'period' currently converts to '.' — trap documents which behavior wins"
+    ]
+  },
+  {
+    "id": "B5",
+    "feature": "symbols/fillers/commands",
+    "wer": 1.0,
+    "checks_passed": 8,
+    "checks_failed": 8,
+    "failures": [
+      "missing: '[array]'",
+      "missing: '(count)'",
+      "missing: '\"ship it\"'",
+      "missing: 'A/B'",
+      "missing: 'pass/fail'",
+      "missing: 'client/server'",
+      "forbidden present: 'open paren'",
+      "regex newline_command (\\n$|\\n ) not matched"
+    ],
+    "segments": 1,
+    "commands": [],
+    "echoDropped": [],
+    "aiUsableAtStart": false,
+    "refinedCount": 0,
+    "wallMs": 29056,
+    "finalText": "(or a). Then open parent count close parent. She said \" ship it close quotes twice. Try an / B test or a pass / fail check and a client / server split. We should replace the filler words new line.",
+    "known_limitations": []
+  },
+  {
+    "id": "B6",
+    "feature": "long-form/segmentation",
+    "wer": 0.587,
+    "checks_passed": 7,
+    "checks_failed": 4,
+    "failures": [
+      "missing: 'USB-C'",
+      "missing: 'HTTP/2'",
+      "missing: '8080'",
+      "missing: 'LT-1042'"
+    ],
+    "segments": 6,
+    "commands": [],
+    "echoDropped": [],
+    "aiUsableAtStart": false,
+    "refinedCount": 0,
+    "wallMs": 61726,
+    "finalText": "Version four point two point nine fixed three crashes and shipped on twelfth october twenty twenty six at nine forty five PM. The USB C port two monitors and about fifteen percent battery were fine. Port two monitors and about fifteen percent battery were fine. I filed LT one oh four two because the iPhone kept disconnecting from macOS over HTP / two on port eighty eighty. Later the same day the CIQ emptied. Bruno reviewed the OC Beacon logs and Oren shipped the fix before dinner. OC Beacon locks and Orange shipped the fix before dinner. Nobody wrote it down, which is why I am dictating this instead. The lesson is simple. When the tests are green but the phone is hot, someone else is running.",
+    "known_limitations": [
+      "digit/number formatting (4.2.9, 9:45, 2026) depends on ASR tokenization"
+    ]
+  }
+]

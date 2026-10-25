@@ -1,0 +1,52 @@
+{
+  "file": "\/data\/user\/0\/com.leanbitlab.leantype\/files\/voice_harness\/wav\/B4.wav",
+  "wallMs": 21263,
+  "enginePref": "auto",
+  "smartPunctuation": true,
+  "removeFillers": true,
+  "aiPostProcessing": true,
+  "aiUsableAtStart": false,
+  "customVocab": [
+    "OC Beacon",
+    "Veran",
+    "Bruno",
+    "Mauro",
+    "Oren",
+    "Elan",
+    "ez-omo-bench",
+    "ez-omo-config",
+    "LiteLLM",
+    "Qwen",
+    "Nestor",
+    "agentic",
+    "Fabro",
+    "Comfy UI",
+    "Vercel"
+  ],
+  "finalText": "The first rule is simple, coma, never skip the tests period. Can I ship on Friday? question Mark. I ordered three things, Coffee, coma, a charger coma and patience, semicolon. Then I waited. Wait for it, exclamation Mark. The billing ",
+  "segments": [
+    {
+      "raw": "The first rule is simple, coma, never skip the tests period. Can I ship on Friday? question Mark. I ordered three things, Coffee, coma, a charger coma and patience, semicolon. Then I waited. Wait for it, exclamation Mark. The billing",
+      "trimmed": "The first rule is simple, coma, never skip the tests period. Can I ship on Friday? question Mark. I ordered three things, Coffee, coma, a charger coma and patience, semicolon. Then I waited. Wait for it, exclamation Mark. The billing",
+      "display": "The first rule is simple, coma, never skip the tests period. Can I ship on Friday? question Mark. I ordered three things, Coffee, coma, a charger coma and patience, semicolon. Then I waited. Wait for it, exclamation Mark. The billing"
+    }
+  ],
+  "commands": [],
+  "echoDropped": [],
+  "partials": [
+    "The first rule is simple comma.",
+    "The first rule is simple, comma, never skip the test space.",
+    "The first rule is simple, comma, never skip the tests period.",
+    "The first rule is simple, comma, never skip the tests period. Can I ship on Friday?",
+    "The first rule is simple, comma. Never skip the tests period. Can I ship on Friday? Question mark.",
+    "The first rule is simple, comma, never skip the tests period. Can I ship on Friday? question mark. I ordered three things.",
+    "The first rule is simple, comma. Never skip the tests period. Can I ship on Friday? question mark. I ordered three things, Colonel, coffee,",
+    "The first rule is simple, coma, never skip the tests period. Can I ship on Friday? Question mark. I ordered three things colon coffee, coma, a charger coma and",
+    "The first rule is simple, coma, never skip the tests period. Can I ship on Friday? Question mark. I ordered three things, Colon Coffee, comma, a charger, coma, and patience.",
+    "The first rule is simple, coma, never skip the tests period. Can I ship on Friday? Question mark. I ordered three things, Colon Coffee, coma, a charger coma and patience. Semicolon.",
+    "The first rule is simple, coma. Never skip the tests period. Can I ship on Friday? question mark. I ordered three things, Colon Coffee, comma, a charger, comma, and patience, semicolon. Then I waited.",
+    "The first rule is simple, coma, never skip the tests period. Can I ship on Friday? question Mark. I ordered three things, Colon Coffee, coma, a charger, coma, and patience, semicolon. Then I waited. Wait for it.",
+    "The first rule is simple, coma. Never skip the tests period. Can I ship on Friday? question mark. I ordered three things, Colon Coffee, comma, a charger, coma, and patience, semicolon. Then I waited. Wait for it exclamation Mark.",
+    "The first rule is simple, coma, never skip the tests period. Can I ship on Friday? question Mark. I ordered three things, Colon Coffee, coma, a charger coma and patience, semicolon. Then I waited. Wait for it, exclamation Mark. The billing"
+  ]
+}

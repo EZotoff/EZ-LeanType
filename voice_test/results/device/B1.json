@@ -1,0 +1,53 @@
+{
+  "file": "\/data\/user\/0\/com.leanbitlab.leantype\/files\/voice_harness\/wav\/B1.wav",
+  "wallMs": 25726,
+  "enginePref": "auto",
+  "smartPunctuation": true,
+  "removeFillers": true,
+  "aiPostProcessing": true,
+  "aiUsableAtStart": false,
+  "customVocab": [
+    "OC Beacon",
+    "Veran",
+    "Bruno",
+    "Mauro",
+    "Oren",
+    "Elan",
+    "ez-omo-bench",
+    "ez-omo-config",
+    "LiteLLM",
+    "Qwen",
+    "Nestor",
+    "agentic",
+    "Fabro",
+    "Comfy UI",
+    "Vercel"
+  ],
+  "finalText": "I work with Bruno and Mauro on the Veron project. We use agents Elon and Oran. I use Light LM and O C beacon. We also verify stuff and open PRs. I also run Agenti QA. Yesterday Veran merged my pull request and Nestor approved it. ",
+  "segments": [
+    {
+      "raw": "I work with Bruno and Mauro on the Veron project. We use agents Elon and Oran. I use Light LM and O C beacon. We also verify stuff and open PRs. I also run Agenti QA. Yesterday Veran merged my pull request and Nestor approved it.",
+      "trimmed": "I work with Bruno and Mauro on the Veron project. We use agents Elon and Oran. I use Light LM and O C beacon. We also verify stuff and open PRs. I also run Agenti QA. Yesterday Veran merged my pull request and Nestor approved it.",
+      "display": "I work with Bruno and Mauro on the Veron project. We use agents Elon and Oran. I use Light LM and O C beacon. We also verify stuff and open PRs. I also run Agenti QA. Yesterday Veran merged my pull request and Nestor approved it.",
+      "refined": null
+    }
+  ],
+  "commands": [],
+  "echoDropped": [],
+  "partials": [
+    "I work with Bruno and Maur.",
+    "I work with Bruno and Mauro on the Veran project.",
+    "I work with Bruno and Mauro on the Veron project. We use agents in the",
+    "I work with Bruno and Mauro on the Veron project. We use agents Ilon and Oran.",
+    "I work with Bruno and Mauro on the Veron project. We use agents Ilon and Oran. I use Lightele.",
+    "I work with Bruno and Mauro on the Veron project. We use agents Ilon and Oran. I use Light LM and O C B can.",
+    "I work with Bruno and Mauro on the Veron project. We use agents Elon and Oran. I use Light LM and O C beacon. We also verify",
+    "I work with Bruno and Mauro on the Veron project. We use agents Elon and Oran. I use Light LM and O C beacon. We also verify stuff and open people.",
+    "I work with Bruno and Mauro on the Veron project. We use agents Ilon and Oran. I use Light LM and O C beacon. We also verify stuff and open PRs.",
+    "I work with Bruno and Mauro on the Veron project. We use agents Elon and Oran. I use Light LM and O C beacon. We also verify stuff and open PRs. I also run Agente QA.",
+    "I work with Bruno and Mauro on the Veron project. We use agents Elon and Oran. I use Light LM and O C beacon. We also verify stuff and open PRs. I also run a Gente QA. Yesterday",
+    "I work with Bruno and Mauro on the Veron project. We use agents Elon and Oran. I use Light LM and O C beacon. We also verify stuff and open PRs. I also run a Gente QA. Yesterday Veran merged my",
+    "I work with Bruno and Mauro on the Veron project. We use agents Elon and Oran. I use Light LM and O C beacon. We also verify stuff and open PRs. I also run a Gente QA. Yesterday Varan merged my pull request and",
+    "I work with Bruno and Mauro on the Veron project. We use agents Elon and Oran. I use Light LM and O C beacon. We also verify stuff and open PRs. I also run Agenti QA. Yesterday Veran merged my pull request and Nestor approved it."
+  ]
+}

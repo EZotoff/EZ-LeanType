@@ -1,0 +1,56 @@
+{
+  "file": "\/data\/user\/0\/com.leanbitlab.leantype\/files\/voice_harness\/wav\/B5.wav",
+  "wallMs": 29056,
+  "enginePref": "auto",
+  "smartPunctuation": true,
+  "removeFillers": true,
+  "aiPostProcessing": true,
+  "aiUsableAtStart": false,
+  "customVocab": [
+    "OC Beacon",
+    "Veran",
+    "Bruno",
+    "Mauro",
+    "Oren",
+    "Elan",
+    "ez-omo-bench",
+    "ez-omo-config",
+    "LiteLLM",
+    "Qwen",
+    "Nestor",
+    "agentic",
+    "Fabro",
+    "Comfy UI",
+    "Vercel"
+  ],
+  "finalText": "(or a). Then open parent count close parent. She said \" ship it close quotes twice. Try an \/ B test or a pass \/ fail check and a client \/ server split. We should replace the filler words new line. ",
+  "segments": [
+    {
+      "raw": "Open bracket or a close bracket. Then open parent count close parent. She said open quote ship it close quotes twice. Try an Slash B test or a pass slash fail check and a client slash server split. We should replace the filler words new line.",
+      "trimmed": "(or a). Then open parent count close parent. She said \" ship it close quotes twice. Try an \/ B test or a pass \/ fail check and a client \/ server split. We should replace the filler words new line.",
+      "display": "(or a). Then open parent count close parent. She said \" ship it close quotes twice. Try an \/ B test or a pass \/ fail check and a client \/ server split. We should replace the filler words new line."
+    }
+  ],
+  "commands": [],
+  "echoDropped": [],
+  "partials": [
+    "Open bracketary, close bracket.",
+    "Open bracket right close bracket.",
+    "Open bracket close bracket. Then open barren.",
+    "Open bracket ray close bracket. Then open parent count close parent.",
+    "open bracket ray close bracket then open parent count close parent",
+    "open bracketary close bracket then open parent count close parent she said open quote",
+    "Open bracketary close bracket. Then open parent count close parent. She said open quote ship it close quote.",
+    "open bracketary close bracket then open parent count close paran she said open quote ship it close quotes twice",
+    "Open bracketary close bracket. Then open parent count close paran. She said open quote ship it close quotes twice. Try an estimate.",
+    "open bracketary close bracket then open parent count close parent she said open quote ship it close quotes twice try an slash b test",
+    "Open bracket close bracket. Then open parent count close parent. She said open quote ship it close quotes twice. Try an Slash B test or a pass slash.",
+    "open bracket ray close bracket then open parent count close parent she said open quote ship it close quotes twice try an slash b test or a pass slash fail check",
+    "open bracket ray close bracket then open parent count close parent she said open quote ship it close quotes twice try an slash b test or a pass slash fail check and the client slash",
+    "open bracket ray close bracket then open parent count close parent. She said open quote ship it close quotes twice. Try an S B test or a pass slash fail check and a client slash server split.",
+    "open bracket ray close bracket then open parent count close parent she said open quote ship it close quotes twice try an slash b test or a pass slash fail check and a client slash server split",
+    "open bracket or a close bracket then open parent count close parent she said open quote ship it close quotes twice try an slash b test or a pass slash fail check and a client slash server split we should",
+    "open bracket ray close bracket then open parent count close parent she said open quote ship it close quotes twice try an s slash b test or a pass slash fail check and a client slash server split we should",
+    "open bracket or a close bracket then open parent count close parent she said open quote ship it close quotes twice try an s slash b test or a pass slash fail check and a client slash server split we should replace the"
+  ]
+}

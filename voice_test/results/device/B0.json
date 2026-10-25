@@ -1,0 +1,45 @@
+{
+  "file": "\/data\/user\/0\/com.leanbitlab.leantype\/files\/voice_harness\/wav\/B0.wav",
+  "wallMs": 15047,
+  "enginePref": "auto",
+  "smartPunctuation": true,
+  "removeFillers": true,
+  "aiPostProcessing": true,
+  "aiUsableAtStart": true,
+  "customVocab": [
+    "OC Beacon",
+    "Veran",
+    "Bruno",
+    "Mauro",
+    "Oren",
+    "Elan",
+    "ez-omo-bench",
+    "ez-omo-config",
+    "LiteLLM",
+    "Qwen",
+    "Nestor",
+    "agentic",
+    "Fabro",
+    "Comfy UI",
+    "Vercel"
+  ],
+  "finalText": "Mrs. Lint I voice, validation take one. The quick brown fox jumps over the lazy dog while the engine listens. ",
+  "segments": [
+    {
+      "raw": "Mrs. Lint I voice, validation take one. The quick brown fox jumps over the lazy dog while the engine listens.",
+      "trimmed": "Mrs. Lint I voice, validation take one. The quick brown fox jumps over the lazy dog while the engine listens.",
+      "display": "Mrs. Lint I voice, validation take one. The quick brown fox jumps over the lazy dog while the engine listens.",
+      "refined": null
+    }
+  ],
+  "commands": [],
+  "echoDropped": [],
+  "partials": [
+    "Mrs. Lintipo is following the",
+    "This is Lint IPOS validation take one.",
+    "This is Lint Ipoise Validation Tick One The Quick Brown for",
+    "This is Lint Ipoise Validation Tickon. The quick brown fox jumps over the lazy tone.",
+    "Mrs. Lint I poised validation tick one. The quick brown fox jumps over the lazy dog. Well thank you.",
+    "Mrs. Lint I voice, validation take one. The quick brown fox jumps over the lazy dog while the engine listens."
+  ]
+}
