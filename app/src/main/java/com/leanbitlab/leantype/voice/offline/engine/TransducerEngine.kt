@@ -30,12 +30,6 @@ class TransducerEngine {
     @Volatile private var recognizer: OfflineRecognizer? = null
     @Volatile private var loadedModelDirPath: String? = null
     @Volatile private var vadModelPath: String? = null
-    // Cross-segment context, persisting across sessions so a mid-sentence mic
-    // stop/start still gives the decoder the sentence's beginning (lowercase
-    // continuation instead of a fresh capitalized sentence).
-    @Volatile private var previousTail = FloatArray(0)
-    @Volatile private var previousTailTranscript = ""
-    private val contextTailSamples = 16000 * 4 // 4 s of previous-segment audio
 
     private class FloatBuffer(initialCapacity: Int = 16000 * 10) {
         private var data = FloatArray(initialCapacity)
@@ -294,10 +288,14 @@ class TransducerEngine {
 
             try {
                 // A new session is a new dictation: never carry audio/text from a
-                // previous session into this one (leaked old speech got prefixed
-                // to the first segment when dictating into another app).
-                previousTail = FloatArray(0)
-                previousTailTranscript = ""
+                // previous session into this one.
+                //
+                // Cross-segment context REMOVED (2026-10-25): prepending the previous
+                // segment's tail audio re-transcribed it, and the text-level strip
+                // failed whenever the tail-in-context heard differently than the
+                // tail alone ("twelfth October" vs "Twelve October") — duplicating
+                // up to 4 s of speech in every segment (corpus B6: 97.8% WER).
+                // Segments now decode cold; VAD boundaries already cut cold starts.
                 callback.onSessionStarted()
 
                 inputStream = FileInputStream(audioInput.fileDescriptor)
@@ -396,28 +394,18 @@ class TransducerEngine {
                             vad.pop()
 
                             if (segSamples.isNotEmpty()) {
-                                val targetSegId = currentSegmentId.incrementAndGet()
+                                currentSegmentId.incrementAndGet()
                                 val fallback = lastEmittedPartial
-                                // Snapshot tail + compute its transcript SYNCHRONOUSLY with the
-                                // tail assignment (the async field read was racy: the field could
-                                // already point at the new tail when the lambda ran).
-                                val contextForDecode = previousTail
-                                val contextTranscript = previousTailTranscript
-                                val newTail = segSamples.takeLast(minOf(segSamples.size, contextTailSamples)).toFloatArray()
                                 decoderExecutor.execute {
                                     if (session.running.get() && !session.cancelled.get()) {
-                                        val fullText = decodeWaveform(currentRecognizer, contextForDecode + segSamples)
-                                        val committedText = if (contextForDecode.isEmpty()) fullText
-                                            else stripContextOverlap(fullText, contextTranscript)
+                                        val committedText = decodeWaveform(currentRecognizer, segSamples)
                                         val textToEmit = if (committedText.isNotEmpty()) committedText else fallback
                                         if (textToEmit.isNotEmpty() && !session.cancelled.get()) {
-                                            Log.i(TAG, "Segment committed via VAD (${segSamples.size} samples, ctx ${contextForDecode.size}): '$textToEmit'")
+                                            Log.i(TAG, "Segment committed via VAD (${segSamples.size} samples): '$textToEmit'")
                                             callback.onFinal(textToEmit)
                                         }
                                     }
                                 }
-                                previousTailTranscript = decodeWaveform(currentRecognizer, newTail)
-                                previousTail = newTail
                             }
 
                             // No buffer pre-roll retention: it overlapped the context tail
@@ -457,18 +445,12 @@ class TransducerEngine {
                         if (shouldFinalize && !session.cancelled.get()) {
                             val segSamples = buffer.toFloatArray()
                             currentSegmentId.incrementAndGet()
-                            val contextForDecode = previousTail
-                            val contextTranscript = previousTailTranscript
-                            val fullText = decodeWaveform(currentRecognizer, contextForDecode + segSamples)
-                            val committedText = if (contextForDecode.isEmpty()) fullText
-                                else stripContextOverlap(fullText, contextTranscript)
+                            val committedText = decodeWaveform(currentRecognizer, segSamples)
                             val textToEmit = if (committedText.isNotEmpty()) committedText else lastEmittedPartial
                             if (textToEmit.isNotEmpty() && !session.cancelled.get()) {
-                                Log.i(TAG, "Segment committed via RMS fallback (${segSamples.size} samples, ctx ${contextForDecode.size}): '$textToEmit'")
+                                Log.i(TAG, "Segment committed via RMS fallback (${segSamples.size} samples): '$textToEmit'")
                                 callback.onFinal(textToEmit)
                             }
-                            previousTail = segSamples.takeLast(minOf(segSamples.size, contextTailSamples)).toFloatArray()
-                            previousTailTranscript = decodeWaveform(currentRecognizer, previousTail)
                             buffer.clear()
                             speechStarted = false
                             consecutiveSilenceSamples = 0
@@ -508,18 +490,14 @@ class TransducerEngine {
                             vad.pop()
                             if (segSamples.isNotEmpty()) {
                                 flushedCount++
-                                val targetSegId = currentSegmentId.incrementAndGet()
+                                currentSegmentId.incrementAndGet()
                                 val fallback = lastEmittedPartial
-                                val contextForDecode = previousTail
-                                val contextTranscript = previousTailTranscript
                                 decoderExecutor.execute {
                                     if (session.running.get() && !session.cancelled.get()) {
-                                        val fullText = decodeWaveform(currentRecognizer, contextForDecode + segSamples)
-                                        val committedText = if (contextForDecode.isEmpty()) fullText
-                                        else stripContextOverlap(fullText, contextTranscript)
+                                        val committedText = decodeWaveform(currentRecognizer, segSamples)
                                         val textToEmit = if (committedText.isNotEmpty()) committedText else fallback
                                         if (textToEmit.isNotEmpty() && !session.cancelled.get()) {
-                                            Log.i(TAG, "Final flush segment committed via VAD (ctx ${contextForDecode.size}): '$textToEmit'")
+                                            Log.i(TAG, "Final flush segment committed via VAD: '$textToEmit'")
                                             callback.onFinal(textToEmit)
                                         }
                                     }
@@ -528,18 +506,14 @@ class TransducerEngine {
                         }
                         if (flushedCount == 0 && speechStarted && buffer.size > 0 && !session.cancelled.get()) {
                             val remainingSamples = buffer.toFloatArray()
-                            val targetSegId = currentSegmentId.incrementAndGet()
+                            currentSegmentId.incrementAndGet()
                             val fallback = lastEmittedPartial
-                            val contextForDecode = previousTail
-                            val contextTranscript = previousTailTranscript
                             decoderExecutor.execute {
                                 if (session.running.get() && !session.cancelled.get()) {
-                                    val fullText = decodeWaveform(currentRecognizer, contextForDecode + remainingSamples)
-                                    val committedText = if (contextForDecode.isEmpty()) fullText
-                                    else stripContextOverlap(fullText, contextTranscript)
+                                    val committedText = decodeWaveform(currentRecognizer, remainingSamples)
                                     val textToEmit = if (committedText.isNotEmpty()) committedText else fallback
                                     if (textToEmit.isNotEmpty() && !session.cancelled.get()) {
-                                        Log.i(TAG, "Final lingering segment committed (ctx ${contextForDecode.size}): '$textToEmit'")
+                                        Log.i(TAG, "Final lingering segment committed: '$textToEmit'")
                                         callback.onFinal(textToEmit)
                                     }
                                 }
@@ -548,18 +522,14 @@ class TransducerEngine {
                     } else {
                         if (buffer.size > 0 && !session.cancelled.get()) {
                             val finalSamples = buffer.toFloatArray()
-                            val targetSegId = currentSegmentId.incrementAndGet()
+                            currentSegmentId.incrementAndGet()
                             val fallback = lastEmittedPartial
-                            val contextForDecode = previousTail
-                            val contextTranscript = previousTailTranscript
                             decoderExecutor.execute {
                                 if (session.running.get() && !session.cancelled.get()) {
-                                    val fullText = decodeWaveform(currentRecognizer, contextForDecode + finalSamples)
-                                    val committedText = if (contextForDecode.isEmpty()) fullText
-                                    else stripContextOverlap(fullText, contextTranscript)
+                                    val committedText = decodeWaveform(currentRecognizer, finalSamples)
                                     val textToEmit = if (committedText.isNotEmpty()) committedText else fallback
                                     if (textToEmit.isNotEmpty() && !session.cancelled.get()) {
-                                        Log.i(TAG, "Final session commit via RMS fallback (ctx ${contextForDecode.size}): '$textToEmit'")
+                                        Log.i(TAG, "Final session commit via RMS fallback: '$textToEmit'")
                                         callback.onFinal(textToEmit)
                                     }
                                 }
@@ -614,47 +584,6 @@ class TransducerEngine {
                 ""
             }
         }
-    }
-
-    /**
-     * When decoding [contextTail + segment], the transcript includes the context
-     * audio's words too. The context tail is the tail of the previously committed
-     * segment, whose committed transcript is [contextTranscript]. Strip that
-     * transcript's words from the front of the combined text; tolerate minor
-     * re-punctuation differences by comparing normalized words.
-     */
-    private fun stripContextOverlap(fullText: String, contextTranscript: String): String {
-        if (contextTranscript.isBlank()) return fullText
-        val norm = { s: String -> s.lowercase().replace(Regex("[^\\p{L}\\p{N}\\s]"), "").split(Regex("\\s+")).filter { it.isNotEmpty() } }
-        val ctxWords = norm(contextTranscript)
-        if (ctxWords.isEmpty()) return fullText
-        val fullWords = fullText.split(Regex("\\s+")).filter { it.isNotEmpty() }
-        // Try to match as many leading context words as the combined decode actually
-        // reproduced (the tail words may not all appear if the boundary re-decoded differently).
-        var matched = 0
-        val normFull = norm(fullText)
-        var i = 0
-        while (i < ctxWords.size && i < normFull.size && normFull[i] == ctxWords[i]) { matched++; i++ }
-        if (matched == 0) {
-            // Suffix-of-context match: the tail audio is the END of the previous
-            // segment, so its words surface at the head of the combined decode even
-            // when earlier context words were re-decoded differently. Require >= 2
-            // matching words to avoid eating a coincidental single word.
-            var j = 0
-            while (j < ctxWords.size && j < normFull.size &&
-                normFull[j] == ctxWords[ctxWords.size - 1 - j]) { j++ }
-            if (j >= 2) matched = j
-        }
-        // matched == 0 after both attempts: emit as-is (one leaked word is better
-        // than a wrongly eaten sentence).
-        if (matched == 0) return fullText
-        // Map stripped word count onto the original (punctuated) tokens
-        var remaining = matched
-        val result = fullWords.dropWhile { w ->
-            val isWord = w.any { it.isLetterOrDigit() }
-            if (isWord && remaining > 0) { remaining--; true } else { !isWord && remaining > 0 }
-        }
-        return result.joinToString(" ").trim()
     }
 
     companion object {

@@ -1,6 +1,6 @@
 {
   "file": "\/data\/user\/0\/com.leanbitlab.leantype\/files\/voice_harness\/wav\/B5.wav",
-  "wallMs": 32652,
+  "wallMs": 29411,
   "enginePref": "bark",
   "smartPunctuation": true,
   "removeFillers": true,
@@ -23,12 +23,12 @@
     "Comfy UI",
     "Vercel"
   ],
-  "finalText": "(or a), then open parent count close parent. She said open quotes ship it close quotes twice. Try an s \/ b test or a pass \/ fail check and a client \/ server split. We should replace the fill awards new line. ",
+  "finalText": "(or a), then open parent count close parent. She said \" ship it close quotes twice. Try an s \/ b test or a pass \/ fail check and a client \/ server split. We should replace the ",
   "segments": [
     {
-      "raw": "Open bracket or a close bracket, then open parent count close parent. She said open quotes ship it close quotes twice. Try an s slash b test or a pass slash fail check and a client slash server split. Um We should um replace the um fill awards new line.",
-      "trimmed": "(or a), then open parent count close parent. She said open quotes ship it close quotes twice. Try an s \/ b test or a pass \/ fail check and a client \/ server split. We should replace the fill awards new line.",
-      "display": "(or a), then open parent count close parent. She said open quotes ship it close quotes twice. Try an s \/ b test or a pass \/ fail check and a client \/ server split. We should replace the fill awards new line."
+      "raw": "(or a), then open parent count close parent. She said \" ship it close quotes twice. Try an s \/ b test or a pass \/ fail check and a client \/ server split. We should replace the",
+      "trimmed": "(or a), then open parent count close parent. She said \" ship it close quotes twice. Try an s \/ b test or a pass \/ fail check and a client \/ server split. We should replace the",
+      "display": "(or a), then open parent count close parent. She said \" ship it close quotes twice. Try an s \/ b test or a pass \/ fail check and a client \/ server split. We should replace the"
     }
   ],
   "commands": [],
@@ -44,18 +44,19 @@
     "Open bracket right close bracket then open.",
     "Open bracket right close bracket, then open parent.",
     "Open bracket right close bracket, then open parent count.",
-    "Open bracket right close bracket. Then open parent count close parent.",
     "Open bracket rate close bracket. Then open parent count close parent.",
-    "Open bracketary close bracket. Then open parent count close parent. She said open code.",
-    "Open bracketary close bracket. Then open parent count close parent. She said open quote ship it close.",
-    "Open bracketary close bracket. Then open parent count close parent. She said open quote ship it close quotes twice.",
+    "Open bracket rate close bracket. Then open parent count close parent. She said.",
+    "Open bracketary close bracket. Then open parent count close parent. She said open quote ship.",
+    "Open bracketary close bracket. Then open parent count close parent. She said open quote ship it close quote.",
+    "Open bracketary, close bracket. Then open parent count close parent. She said open quote ship it close quotes twice.",
     "Open bracketary close bracket. Then open parent count close parent she said open quote ship it close quotes twice trying",
     "Open bracketary close bracket. Then open parent count close parent She said open quote ship it close quotes twice. Try an S. l. be.",
     "Open bracket or a close bracket. Then open parent count close parent. She said open quote ship it close quotes twice. Try an slash b test or a",
     "Open bracket or a close bracket. Then open parent count close parent she said open quote ship it close quotes twice. Try an s slash b test or a pass slash fail chat.",
     "Open bracket or a close bracket, then open parent count close parent she said open quote ship it close quotes twice, try an s slash b test, or a pass slash fail check, and the client slash.",
     "Open bracket or a close bracket, then open parent count close parent she said open quote ship it close quotes twice, try an s slash b test, or a pass slash fail check, and a client slash server split.",
-    "Open bracket or a close bracket. Then open parent count close parent. She said open quote ship it close quotes twice. Try an s slash b test or a pass slash fail check and the client slash server split.",
-    "Open bracket or a close bracket. Then open parent count close parent. She said open quote ship it close quotes twice. Try an s slash b test or a pass slash fail check and the client slash server split. We should um replace."
+    "Open bracket or a close bracket. Then open parent count close parent. She said open quote ship it close quotes twice. Try an s slash b test or a pass slash fail check and the client slash server split. We should.",
+    "Open bracket or a close bracket. Then open parent count close parent. She said open quote ship it close quotes twice. Try an s slash b test or a pass slash fail check and the client slash server split. We should um.",
+    "Open bracket or a close bracket, then open parent count close parent. She said open quote ship it close quotes twice. Try an s slash b test or a pass slash fail check and a client slash server split. Um We should um replace the uh."
   ]
 }

@@ -1,11 +1,11 @@
 {
   "file": "\/data\/user\/0\/com.leanbitlab.leantype\/files\/voice_harness\/wav\/B2.wav",
-  "wallMs": 31382,
+  "wallMs": 19881,
   "enginePref": "bark",
   "smartPunctuation": true,
   "removeFillers": true,
   "aiPostProcessing": true,
-  "aiUsableAtStart": true,
+  "aiUsableAtStart": false,
   "customVocab": [
     "OC Beacon",
     "Veran",
@@ -23,13 +23,12 @@
     "Comfy UI",
     "Vercel"
   ],
-  "finalText": "Quen handles the reasoning, Light LM routes the requests, and Versel hosts the demo. Fabro opened the ticket for Easy Omo Bench because Easy Omo Config lost its theme. Nestor moved the conf UI workflow to the new OCB control. ",
+  "finalText": "Qwen handles the reasoning, Light LM routes the requests, and Vercel hosts the demo. Fabro opened the ticket for Easy Omo Bench because Easy Omo Config lost its theme. Nestor moved the conf UI workflow to the new OC. ",
   "segments": [
     {
-      "raw": "Quen handles the reasoning, Light LM routes the requests, and Versel hosts the demo. Fabro opened the ticket for Easy Omo Bench because Easy Omo Config lost its theme. Nestor moved the conf UI workflow to the new OCB control.",
-      "trimmed": "Quen handles the reasoning, Light LM routes the requests, and Versel hosts the demo. Fabro opened the ticket for Easy Omo Bench because Easy Omo Config lost its theme. Nestor moved the conf UI workflow to the new OCB control.",
-      "display": "Quen handles the reasoning, Light LM routes the requests, and Versel hosts the demo. Fabro opened the ticket for Easy Omo Bench because Easy Omo Config lost its theme. Nestor moved the conf UI workflow to the new OCB control.",
-      "refined": null
+      "raw": "Quen handles the reasoning, Light LM routes the requests, and Versel hosts the demo. Fabro opened the ticket for Easy Omo Bench because Easy Omo Config lost its theme. Nestor moved the conf UI workflow to the new OC.",
+      "trimmed": "Qwen handles the reasoning, Light LM routes the requests, and Vercel hosts the demo. Fabro opened the ticket for Easy Omo Bench because Easy Omo Config lost its theme. Nestor moved the conf UI workflow to the new OC.",
+      "display": "Qwen handles the reasoning, Light LM routes the requests, and Vercel hosts the demo. Fabro opened the ticket for Easy Omo Bench because Easy Omo Config lost its theme. Nestor moved the conf UI workflow to the new OC."
     }
   ],
   "commands": [],
@@ -40,19 +39,15 @@
     "Quen handles the reasoning.",
     "Quen handles the reasoning light alone.",
     "Quen handles the reasoning light low.",
-    "Quen handles the reasoning light l. l. m routes.",
+    "Quen handles the reasoning light l. l. m. routes the request.",
     "Quen handles the reasoning, light l. l. m. routes the requests and versus.",
     "Quen handles the reasoning, light l. l. m. routes the requests, and versel hosts the.",
     "Quen handles the reasoning, light l. l. m. routes the requests, and versel hosts the demo.",
-    "Quen handles the reasoning, light l. l. m. routes the requests, and versel hosts the demo. Fabro.",
-    "Quen handles the reasoning, Light L.M. routes the requests, and Versel hosts the demo. Fabro opened the ticket.",
-    "Quen handles the reasoning, Light L. m. routes the requests, and Versel hosts the demo. Fabro opened the ticket for easy.",
-    "Quen handles the reasoning, Light L.M. routes the requests, and Versel hosts the demo. Fabro opened the ticket for easy omal bench.",
+    "Quen handles the reasoning, Light L. m. routes the requests, and Versel hosts the demo. Fabro opened the ticket for.",
     "Quen handles the reasoning, Light L.M. routes the requests, and Versel hosts the demo. Fabro opened the ticket for Easy Omnall Bench because Easy.",
-    "Quen handles the reasoning, Light L.M. routes the requests, and Versel hosts the demo. Fabro opened the ticket for Easy Omo Bench because Easy Omo config.",
     "Quen handles the reasoning, Light L. m. routes the requests, and Versel hosts the demo. Fabro opened the ticket for Easy Omo Bench because Easy Omo Config lost its theme.",
     "Quen handles the reasoning, Light L.M. routes the requests, and Versel hosts the demo. Fabro opened the ticket for Easy Omo Bench because Easy Omo Config lost its theme.",
     "Quen handles the reasoning, Light L. m. routes the requests, and Versel hosts the demo. Fabro opened the ticket for Easy Omo Bench because Easy Omo Config lost its theme. Nestor moved the conf UI.",
-    "Quen handles the reasoning, Light LM routes the requests, and Versel hosts the demo. Fabro opened the ticket for Easy Omo Bench because Easy Omo Config lost its theme. Nestor moved the conf UI workflow to the new OCB control."
+    "Quen handles the reasoning, Light LM routes the requests, and Versel hosts the demo. Fabro opened the ticket for Easy Omo Bench because Easy Omo Config lost its theme. Nestor moved the conf UI workflow to the new OC."
   ]
 }

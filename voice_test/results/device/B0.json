@@ -1,6 +1,6 @@
 {
   "file": "\/data\/user\/0\/com.leanbitlab.leantype\/files\/voice_harness\/wav\/B0.wav",
-  "wallMs": 16790,
+  "wallMs": 22688,
   "enginePref": "bark",
   "smartPunctuation": true,
   "removeFillers": true,
@@ -45,9 +45,8 @@
     "This is Lint iPhys validation take one. The quick.",
     "This is Lint iPhys validation take one. The quick brown folks.",
     "This is Lintai pois validation take one. The quick brown fox jumps.",
-    "This is Lintai pois validation take one. The quick brown fox jumps over the layer.",
     "This is Lintai poise validation take one. The quick brown fox jumps over the lazy dog.",
-    "This is Lintai poise validation take one. The quick brown fox jumps over the lazy dog while the engine.",
+    "This is Lintai poise validation take one. The quick brown fox jumps over the lazy dog. Well.",
     "This is Lintai poise validation take one. The quick brown fox jumps over the lazy dog while the engine listens."
   ]
 }
