@@ -253,4 +253,45 @@ class SmartVoicePostProcessingTest {
         val raw = "<think></think>\nInstruction: Fix stuff.\nText: hello world"
         assertEquals("Text: hello world", VoiceAiPostProcessor.extractAnswer("hello world", raw))
     }
+
+    // --- Corpus B4 mirror: punctuation through the real pipeline ---
+
+    @Test
+    fun pipeline_b4_punctuation_asr_transcript() {
+        // Verbatim ASR output from corpus block B4 (Phonon). Only the
+        // punctuation behavior is asserted; ASR-level misses (things colon
+        // not heard, "Can I" vs "Can we") are out of scope for the text stage.
+        val asr = "The first rule is simple, coma, never skip the tests period. " +
+            "Can I ship on Friday? question Mark. I ordered three things, Coffee, coma, " +
+            "a charger coma and patience, semicolon. Then I waited. Wait for it, " +
+            "exclamation Mark. The billing"
+        val flags = VoiceTranscriptPipeline.StageFlags(
+            smartPunctuation = true, removeFillers = false,
+            aiPostProcessing = false, aiUsable = false, customVocab = emptyList()
+        )
+        val out = VoiceTranscriptPipeline.preTransform(asr, isFinal = true, flags = flags)
+        assertTrue("got: $out", out.contains("simple, never"))
+        assertTrue("got: $out", out.contains("tests."))
+        assertTrue("got: $out", out.contains("Friday? I"))
+        assertTrue("got: $out", out.contains("charger, and patience"))
+        assertTrue("got: $out", out.contains("patience;"))
+        assertTrue("got: $out", out.contains("it!"))
+        assertTrue("got: $out", out.contains("The billing"))
+        assertTrue("got: $out", !out.contains(" period"))
+        assertTrue("got: $out", !out.contains(" question mark"))
+        assertTrue("got: $out", !out.contains(" exclamation"))
+        assertTrue("got: $out", !out.contains(" semicolon"))
+    }
+
+    @Test
+    fun pipeline_b4_period_trap_survives_pipeline() {
+        val flags = VoiceTranscriptPipeline.StageFlags(
+            smartPunctuation = true, removeFillers = false,
+            aiPostProcessing = false, aiUsable = false, customVocab = emptyList()
+        )
+        val out = VoiceTranscriptPipeline.preTransform(
+            "The billing period ends Friday.", isFinal = true, flags = flags
+        )
+        assertEquals("The billing period ends Friday.", out)
+    }
 }

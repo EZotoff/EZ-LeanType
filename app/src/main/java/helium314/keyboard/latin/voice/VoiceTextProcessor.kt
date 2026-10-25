@@ -24,10 +24,33 @@ object VoiceTextProcessor {
     // fails to compile lookbehind on some builds and throws PatternSyntaxException during
     // <clinit>, which surfaces as ExceptionInInitializerError and kills the app (4.2.7 crash).
     // Use an optional leading space in the pattern instead, and re-emit it in the replacement.
+    // Two-tier spoken punctuation (corpus voice_test B4):
+    // - AGGRESSIVE phrases convert wherever they stand: what follows may be a
+    //   space, ASR's own punctuation right after the phrase ("question Mark.",
+    //   "tests period.") or end of input; duplicates collapse afterwards.
+    //   "coma" is Phonon's consistent misspelling of "comma" and is mapped
+    //   deliberately (a literal medical "coma" in dictation is rarer than
+    //   the misspelling; corpus pins this).
+    // - PERIOD-class phrases are ordinary English words ("billing period",
+    //   "grace period"): they convert ONLY at clause end, i.e. immediately
+    //   before terminal punctuation or end of input. A following word or
+    //   non-terminal mark means the word sense wins. Russian "точка" stays
+    //   aggressive (existing behavior, pinned by tests).
     private val PUNCT_REGEX = Regex(
-        """( |^)(question mark|exclamation mark|exclamation point|full stop|period|comma|semicolon|colon|вопросительный знак|восклицательный знак|точка с запятой|точка|запятая|двоеточие)(?= |$)""",
+        """( |^)(question mark|exclamation mark|exclamation point|semicolon|colon|comma|coma|вопросительный знак|восклицательный знак|точка с запятой|точка|запятая|двоеточие)(?=[ .,;:!?]|$)""",
         RegexOption.IGNORE_CASE
     )
+    private val PERIOD_AT_END_REGEX = Regex(
+        """( |^)(period|full stop)(?=[.!?]|$)""",
+        RegexOption.IGNORE_CASE
+    )
+    // ASR often emits its own punctuation where the user also spoke it;
+    // collapse the duplicates: "??"/".." -> one mark, a comma yields to a
+    // spoken stronger mark (",;" -> ";"), and a trailing period after a
+    // spoken terminal mark is redundant ("?." -> "?", ";." -> ";").
+    private val PUNCT_RUN_RE = Regex("""([,;:?.!])\1+""")
+    private val COMMA_BEFORE_STRONGER_RE = Regex(""",([;:!?])""")
+    private val REDUNDANT_TRAILING_DOT_RE = Regex("""([,;:!?])\.""")
     private val SPACE_BEFORE_PUNCT = Regex("""\s+([,;.!?])""")
     private val SPACE_AFTER_PUNCT = Regex("""([,;.!?])(?=\w)""")
 
@@ -81,6 +104,7 @@ object VoiceTextProcessor {
         "full stop" to ".",
         "period" to ".",
         "comma" to ",",
+        "coma" to ",",
         "semicolon" to ";",
         "colon" to ":",
         "вопросительный знак" to "?",
@@ -94,11 +118,17 @@ object VoiceTextProcessor {
     fun applySpokenPunctuation(raw: String): String {
         return try {
             var text = raw.trim()
-            text = PUNCT_REGEX.replace(text) { match ->
+            val replacePhrase: (MatchResult) -> CharSequence = { match ->
                 val separator = if (match.groupValues[1] == " ") " " else ""
                 separator + (PUNCT_MAP[match.groupValues[2].lowercase(Locale.ROOT)] ?: match.groupValues[2])
             }
-            text.replace(SPACE_BEFORE_PUNCT, "$1").replace(SPACE_AFTER_PUNCT, "$1 ")
+            text = PUNCT_REGEX.replace(text, replacePhrase)
+            text = PERIOD_AT_END_REGEX.replace(text, replacePhrase)
+            text.replace(SPACE_BEFORE_PUNCT, "$1")
+                .replace(PUNCT_RUN_RE, "$1")
+                .replace(COMMA_BEFORE_STRONGER_RE, "$1")
+                .replace(REDUNDANT_TRAILING_DOT_RE, "$1")
+                .replace(SPACE_AFTER_PUNCT, "$1 ")
         } catch (_: Throwable) {
             raw
         }
@@ -117,10 +147,7 @@ object VoiceTextProcessor {
         var text = raw.trim()
         if (smartPunctuationEnabled) {
             try {
-                text = PUNCT_REGEX.replace(text) { match ->
-                    PUNCT_MAP[match.value.lowercase(Locale.ROOT)] ?: match.value
-                }
-                text = text.replace(SPACE_BEFORE_PUNCT, "$1").replace(SPACE_AFTER_PUNCT, "$1 ")
+                text = applySpokenPunctuation(text)
             } catch (_: Throwable) {}
         }
 
