@@ -23,12 +23,14 @@ class VoiceEngineController(private val context: Context) : IVoiceEngine.Stub() 
     val whisperEngine = WhisperEngine()
     val gigaamEngine = TransducerEngine()
     val phononEngine = PhononEngine()
+    val barkEngine = TransducerEngine()
     val modelManager = ModelManager(context) { engineType ->
         try {
             when (engineType) {
                 VoiceConstants.ENGINE_WHISPER -> whisperEngine.releaseContext()
                 VoiceConstants.ENGINE_GIGAAM -> gigaamEngine.releaseContext()
                 VoiceConstants.ENGINE_PHONON -> phononEngine.releaseContext()
+                VoiceConstants.ENGINE_BARK -> barkEngine.releaseContext()
             }
         } catch (_: Throwable) {}
     }
@@ -39,7 +41,7 @@ class VoiceEngineController(private val context: Context) : IVoiceEngine.Stub() 
         return VoiceEngineInfo(
             contractVersion = VoiceConstants.VOICE_CONTRACT_VERSION,
             pluginId = context.packageName,
-            displayName = "LeanType Voice (GigaAM, Phonon-2 & Whisper)",
+            displayName = "LeanType Voice (GigaAM, Phonon-2, Bark & Whisper)",
             supportsVosk = false,
             supportsWhisper = true,
             supportsHybrid = false
@@ -76,6 +78,7 @@ class VoiceEngineController(private val context: Context) : IVoiceEngine.Stub() 
             when (type) {
                 VoiceConstants.ENGINE_GIGAAM -> gigaamEngine.releaseContext()
                 VoiceConstants.ENGINE_PHONON -> phononEngine.releaseContext()
+                VoiceConstants.ENGINE_BARK -> barkEngine.releaseContext()
                 else -> whisperEngine.releaseContext()
             }
         } catch (t: Throwable) {
@@ -104,6 +107,7 @@ class VoiceEngineController(private val context: Context) : IVoiceEngine.Stub() 
             if (isSessionActive) {
                 try { whisperEngine.cancelSession() } catch (_: Throwable) {}
                 try { gigaamEngine.cancelSession() } catch (_: Throwable) {}
+                try { barkEngine.cancelSession() } catch (_: Throwable) {}
                 isSessionActive = false
             }
 
@@ -134,6 +138,7 @@ class VoiceEngineController(private val context: Context) : IVoiceEngine.Stub() 
             val gigaamReady = modelManager.isModelReady(VoiceConstants.ENGINE_GIGAAM)
             val whisperReady = modelManager.isModelReady(VoiceConstants.ENGINE_WHISPER)
             val phononReady = modelManager.isModelReady(VoiceConstants.ENGINE_PHONON)
+            val barkReady = modelManager.isModelReady(VoiceConstants.ENGINE_BARK)
 
             val offlineEnginePref = try {
                 context.prefs().getString(
@@ -178,6 +183,15 @@ class VoiceEngineController(private val context: Context) : IVoiceEngine.Stub() 
                 }
                 try { audioInput.close() } catch (_: Throwable) {}
                 callback.onError(VoiceConstants.VOICE_ERROR_MODEL_MISSING, "Phonon-2 model not ready. Please download it in Voice Settings.")
+                return
+            } else if (offlineEnginePref == VoiceConstants.OFFLINE_ENGINE_BARK) {
+                // Opt-in high-accuracy English engine; never chosen by auto routing.
+                if (barkReady) {
+                    startBarkSession(audioInput, wrappedCallback, config, callback)
+                    return
+                }
+                try { audioInput.close() } catch (_: Throwable) {}
+                callback.onError(VoiceConstants.VOICE_ERROR_MODEL_MISSING, "Bark 3.0 model not ready. Please download it in Voice Settings.")
                 return
             } else if (offlineEnginePref == VoiceConstants.OFFLINE_ENGINE_WHISPER) {
                 if (whisperReady) {
@@ -275,6 +289,37 @@ class VoiceEngineController(private val context: Context) : IVoiceEngine.Stub() 
         }
         try { audioInput.close() } catch (_: Throwable) {}
         callback.onError(VoiceConstants.VOICE_ERROR_MODEL_INVALID, "Failed to initialize GigaAM model.")
+    }
+
+    private fun startBarkSession(
+        audioInput: ParcelFileDescriptor,
+        wrappedCallback: IVoiceCallback,
+        config: VoiceSessionConfig?,
+        callback: IVoiceCallback
+    ) {
+        val barkModelDir = modelManager.getModelDir(VoiceConstants.ENGINE_BARK)
+        var barkLoaded = false
+        try {
+            barkLoaded = barkEngine.loadModel(barkModelDir, context)
+        } catch (t: Throwable) {
+            Log.e(TAG, "Exception loading Bark model", t)
+        }
+
+        if (barkLoaded) {
+            Log.i(TAG, "Starting Underdog Bark 3.0 session")
+            isSessionActive = true
+            barkEngine.startSession(audioInput, wrappedCallback, config)
+            return
+        }
+
+        val whisperReady = modelManager.isModelReady(VoiceConstants.ENGINE_WHISPER)
+        if (whisperReady) {
+            Log.w(TAG, "Bark load failed, falling back to Whisper")
+            startWhisperSession(audioInput, wrappedCallback, config, callback)
+            return
+        }
+        try { audioInput.close() } catch (_: Throwable) {}
+        callback.onError(VoiceConstants.VOICE_ERROR_MODEL_INVALID, "Failed to initialize Bark model.")
     }
 
     private fun startPhononSession(

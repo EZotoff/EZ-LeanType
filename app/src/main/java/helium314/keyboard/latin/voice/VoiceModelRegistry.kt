@@ -98,9 +98,25 @@ object VoiceModelRegistry {
         )
     )
 
+    val barkModels = listOf(
+        VoiceModelItem(
+            id = "underdog-bark-3-0-int8",
+            displayName = "Underdog Bark 3.0 (English, Max Accuracy)",
+            engineType = VoiceConstants.ENGINE_BARK,
+            language = "English",
+            languageCode = "en",
+            sizeMb = "684 MB",
+            downloadUrl = "https://github.com/EZotoff/EZ-LeanType/releases/download/v4.2.9/underdog-bark-3.0-int8.zip",
+            backupDownloadUrl = "",
+            browserUrl = "https://github.com/EZotoff/EZ-LeanType/releases/download/v4.2.9/underdog-bark-3.0-int8.zip",
+            description = "Underdog Bark 3.0 by Conway Research (CC-BY-4.0; derives from NVIDIA parakeet-tdt-0.6b-v3 and Moondream parakeet-ultra, both CC-BY-4.0). ONNX int8 export: 4.94% avg WER on the Open ASR Leaderboard English sets. Highest accuracy on conversational speech; needs ~1.4 GB RAM while dictating — pick it explicitly in the Offline Voice Engine setting. Import a zip with encoder/decoder/joiner .int8.onnx + tokens.txt (name it bark…)."
+        )
+    )
+
     fun findById(id: String): VoiceModelItem? {
         return gigaamModels.firstOrNull { it.id == id }
             ?: phononModels.firstOrNull { it.id == id }
+            ?: barkModels.firstOrNull { it.id == id }
             ?: whisperModels.firstOrNull { it.id == id }
     }
 }

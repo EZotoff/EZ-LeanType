@@ -41,6 +41,13 @@ class ModelManager(
                     ModelState(engineType, ModelState.STATE_ERROR, "Invalid Phonon-2 model files (need preprocessor-model.onnx, encoder-model.int8.onnx, decoder_joint-model.int8.onnx, vocab.txt)")
                 }
             }
+            VoiceConstants.ENGINE_BARK -> {
+                if (isTransducerModelValid(targetFile)) {
+                    ModelState(engineType, ModelState.STATE_READY, "Underdog Bark 3.0 ONNX ready")
+                } else {
+                    ModelState(engineType, ModelState.STATE_ERROR, "Invalid Bark model files (need encoder.int8.onnx, decoder.int8.onnx, joiner.int8.onnx, tokens.txt)")
+                }
+            }
             VoiceConstants.ENGINE_WHISPER -> {
                 val whisperFile = File(targetFile, "model.bin").takeIf { it.exists() } ?: targetFile
                 if (isWhisperHeaderValid(whisperFile)) {
@@ -62,6 +69,7 @@ class ModelManager(
         return when (engineType) {
             VoiceConstants.ENGINE_GIGAAM -> isTransducerModelValid(targetFile)
             VoiceConstants.ENGINE_PHONON -> isPhononModelValid(targetFile)
+            VoiceConstants.ENGINE_BARK -> isTransducerModelValid(targetFile)
             VoiceConstants.ENGINE_WHISPER -> {
                 val whisperFile = File(targetFile, "model.bin").takeIf { it.exists() } ?: targetFile
                 isWhisperHeaderValid(whisperFile)
@@ -141,6 +149,10 @@ class ModelManager(
         if (isZipFile(sourceFile)) {
             val fileName = sourceFile.name.lowercase()
             resolvedEngine = when {
+                // Bark and GigaAM zips share the sherpa transducer layout, so
+                // contents cannot tell them apart: bark relies on an explicit
+                // target engine or a "bark" filename hint.
+                targetEngine == VoiceConstants.ENGINE_BARK || fileName.contains("bark") -> VoiceConstants.ENGINE_BARK
                 targetEngine == VoiceConstants.ENGINE_GIGAAM || fileName.contains("gigaam") -> VoiceConstants.ENGINE_GIGAAM
                 targetEngine == VoiceConstants.ENGINE_PHONON -> VoiceConstants.ENGINE_PHONON
                 looksLikePhononZip(sourceFile) -> VoiceConstants.ENGINE_PHONON
@@ -154,7 +166,7 @@ class ModelManager(
         val finalTarget = File(modelsDir, resolvedEngine)
 
         try {
-            if (resolvedEngine == VoiceConstants.ENGINE_GIGAAM || resolvedEngine == VoiceConstants.ENGINE_PHONON) {
+            if (resolvedEngine == VoiceConstants.ENGINE_GIGAAM || resolvedEngine == VoiceConstants.ENGINE_PHONON || resolvedEngine == VoiceConstants.ENGINE_BARK) {
                 finalTarget.deleteRecursively()
                 finalTarget.mkdirs()
                 if (isZipFile(sourceFile)) {
@@ -216,7 +228,7 @@ class ModelManager(
 
             // Auto-detect engine from physical contents
             if (isZipFile(tmpFile)) {
-                if (targetEngine != VoiceConstants.ENGINE_GIGAAM) {
+                if (targetEngine != VoiceConstants.ENGINE_BARK && targetEngine != VoiceConstants.ENGINE_GIGAAM) {
                     targetEngine = VoiceConstants.ENGINE_PHONON
                 }
                 if (looksLikePhononZip(tmpFile)) {

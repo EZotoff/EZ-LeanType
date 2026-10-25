@@ -127,6 +127,7 @@ fun VoiceSettingsScreen(
     val installedGigaAmPref = remember(prefs) { prefs.getString("installed_model_${VoiceConstants.ENGINE_GIGAAM}", null) }
     val installedWhisperPref = remember(prefs) { prefs.getString("installed_model_${VoiceConstants.ENGINE_WHISPER}", null) }
     val installedPhononPref = remember(prefs) { prefs.getString("installed_model_${VoiceConstants.ENGINE_PHONON}", null) }
+    val installedBarkPref = remember(prefs) { prefs.getString("installed_model_${VoiceConstants.ENGINE_BARK}", null) }
     var gigaamState by remember {
         mutableStateOf<ModelState?>(
             pluginManager.getModelState(VoiceConstants.ENGINE_GIGAAM)
@@ -143,6 +144,12 @@ fun VoiceSettingsScreen(
         mutableStateOf<ModelState?>(
             pluginManager.getModelState(VoiceConstants.ENGINE_PHONON)
                 ?: if (installedPhononPref != null) ModelState(VoiceConstants.ENGINE_PHONON, ModelState.STATE_READY, null) else null
+        )
+    }
+    var barkState by remember {
+        mutableStateOf<ModelState?>(
+            pluginManager.getModelState(VoiceConstants.ENGINE_BARK)
+                ?: if (installedBarkPref != null) ModelState(VoiceConstants.ENGINE_BARK, ModelState.STATE_READY, null) else null
         )
     }
     var showModelDownloadDialog by remember { mutableStateOf(false) }
@@ -193,6 +200,7 @@ fun VoiceSettingsScreen(
             gigaamState = pluginManager.getModelState(VoiceConstants.ENGINE_GIGAAM)
             whisperState = pluginManager.getModelState(VoiceConstants.ENGINE_WHISPER)
             phononState = pluginManager.getModelState(VoiceConstants.ENGINE_PHONON)
+            barkState = pluginManager.getModelState(VoiceConstants.ENGINE_BARK)
         } else if (!isInitialConnectionPending) {
             isPluginConnected = false
             engineInfo = null
@@ -204,6 +212,9 @@ fun VoiceSettingsScreen(
             } else null
             phononState = if (installedPhononPref != null) {
                 ModelState(VoiceConstants.ENGINE_PHONON, ModelState.STATE_READY, null)
+            } else null
+            barkState = if (installedBarkPref != null) {
+                ModelState(VoiceConstants.ENGINE_BARK, ModelState.STATE_READY, null)
             } else null
         }
     }
@@ -224,6 +235,7 @@ fun VoiceSettingsScreen(
                 gigaamState = null
                 whisperState = null
                 phononState = null
+                barkState = null
             }
         })
         val bound = pluginManager.bindIfNeeded()
@@ -467,6 +479,7 @@ fun VoiceSettingsScreen(
                     "Auto (GigaAM for Russian, Phonon-2 for English, Whisper for other)" to VoiceConstants.OFFLINE_ENGINE_AUTO,
                     "GigaAM v3 (Russian SOTA, Punctuation & Casing)" to VoiceConstants.OFFLINE_ENGINE_GIGAAM,
                     "Phonon-2 (English, 690 MB ONNX, High Accuracy)" to VoiceConstants.OFFLINE_ENGINE_PHONON,
+                    "Bark 3.0 (English, 684 MB, Max Accuracy, High RAM)" to VoiceConstants.OFFLINE_ENGINE_BARK,
                     "Whisper (Multilingual)" to VoiceConstants.OFFLINE_ENGINE_WHISPER
                 ),
                 default = VoiceConstants.OFFLINE_ENGINE_AUTO,
@@ -630,6 +643,7 @@ fun VoiceSettingsScreen(
             gigaamState = gigaamState,
             whisperState = whisperState,
             phononState = phononState,
+            barkState = barkState,
             onRefresh = { updatePluginStatus() },
             onImportLocalFile = { engine ->
                 pendingImportEngine = engine
@@ -864,10 +878,12 @@ fun VoiceSettingsScreen(
                                         val label = when (currentEnginePref) {
                                             VoiceConstants.OFFLINE_ENGINE_WHISPER -> "Ready (Whisper)"
                                             VoiceConstants.OFFLINE_ENGINE_PHONON -> "Ready (Phonon-2)"
+                                            VoiceConstants.OFFLINE_ENGINE_BARK -> "Ready (Bark 3.0)"
                                             else -> "Ready (Auto)"
                                         }
                                         Triple(label, MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer)
                                     }
+                                    barkState?.state == ModelState.STATE_READY -> Triple("Ready (Bark 3.0)", MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer)
                                     phononState?.state == ModelState.STATE_READY -> Triple("Ready (Phonon-2)", MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer)
                                     whisperState?.state == ModelState.STATE_READY -> Triple("Ready (Whisper)", MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer)
                                     whisperState?.state == ModelState.STATE_LOADING || phononState?.state == ModelState.STATE_LOADING -> Triple("Loading…", MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.onTertiaryContainer)

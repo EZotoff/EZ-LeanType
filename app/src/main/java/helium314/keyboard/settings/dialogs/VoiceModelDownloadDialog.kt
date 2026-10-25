@@ -41,6 +41,7 @@ fun VoiceModelDownloadDialog(
     gigaamState: ModelState? = null,
     whisperState: ModelState?,
     phononState: ModelState? = null,
+    barkState: ModelState? = null,
     voskState: ModelState? = null,
     onRefresh: () -> Unit,
     onImportLocalFile: (String) -> Unit
@@ -58,6 +59,8 @@ fun VoiceModelDownloadDialog(
     val isGigaAmInstalled = gigaamState?.state == ModelState.STATE_READY
     val isWhisperInstalled = whisperState?.state == ModelState.STATE_READY
     val isPhononInstalled = phononState?.state == ModelState.STATE_READY
+    val installedBarkId = prefs.getString("installed_model_${VoiceConstants.ENGINE_BARK}", null)
+    val isBarkInstalled = barkState?.state == ModelState.STATE_READY
     val matchedPredefinedModel = VoiceModelRegistry.whisperModels.any { it.id == installedWhisperId }
 
     ThreeButtonAlertDialog(
@@ -169,6 +172,106 @@ fun VoiceModelDownloadDialog(
                         } else {
                             OutlinedButton(
                                 onClick = { onImportLocalFile(VoiceConstants.ENGINE_GIGAAM) }
+                            ) {
+                                Text("Import File")
+                            }
+                        }
+                    }
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                }
+
+                // --- Underdog Bark 3.0 Section (English, opt-in max accuracy) ---
+                if (VoiceModelRegistry.barkModels.isNotEmpty()) {
+                    Text(
+                        text = "Bark 3.0 (English, Max Accuracy — High RAM)",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)
+                    )
+
+                    for (model in VoiceModelRegistry.barkModels) {
+                        val isThisModelInstalled = isBarkInstalled && installedBarkId == model.id
+                        val isThisModelDownloading = activeDownloadingId == model.id
+
+                        ModelDownloadRow(
+                            model = model,
+                            isThisModelInstalled = isThisModelInstalled,
+                            isThisModelDownloading = isThisModelDownloading,
+                            isAnyModelDownloading = activeDownloadingId != null,
+                            downloadProgress = currentProgress,
+                            isAnyModelInstalledForEngine = isBarkInstalled,
+                            onDownload = {
+                                scope.launch {
+                                    VoiceDownloadDispatcher.downloadAndInstall(
+                                        context = context,
+                                        model = model,
+                                        pluginManager = pluginManager,
+                                        onSuccess = {
+                                            prefs.edit().putString("installed_model_${VoiceConstants.ENGINE_BARK}", model.id).apply()
+                                            onRefresh()
+                                        },
+                                        onError = { err ->
+                                            Toast.makeText(context, err, Toast.LENGTH_LONG).show()
+                                        }
+                                    )
+                                }
+                            },
+                            onDelete = {
+                                prefs.edit().remove("installed_model_${VoiceConstants.ENGINE_BARK}").apply()
+                                pluginManager.deleteModel(VoiceConstants.ENGINE_BARK)
+                                Toast.makeText(context, "${model.displayName} model removed", Toast.LENGTH_SHORT).show()
+                                onRefresh()
+                            }
+                        )
+                    }
+
+                    // Custom Bark zip import (sherpa transducer layout:
+                    // encoder/decoder/joiner .int8.onnx + tokens.txt; zip name
+                    // must contain "bark" for auto-detection).
+                    val isCustomBarkInstalled = isBarkInstalled && (installedBarkId == "custom" || !VoiceModelRegistry.barkModels.any { it.id == installedBarkId })
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 6.dp, horizontal = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Custom Bark Model",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = if (isCustomBarkInstalled) "Imported & Ready" else "Load bark…zip (684 MB)",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (isCustomBarkInstalled)
+                                    MaterialTheme.colorScheme.primary
+                                else
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        if (isCustomBarkInstalled) {
+                            Button(
+                                onClick = {
+                                    prefs.edit().remove("installed_model_${VoiceConstants.ENGINE_BARK}").apply()
+                                    pluginManager.deleteModel(VoiceConstants.ENGINE_BARK)
+                                    Toast.makeText(context, "Bark model deleted", Toast.LENGTH_SHORT).show()
+                                    onRefresh()
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.error,
+                                    contentColor = MaterialTheme.colorScheme.onError
+                                )
+                            ) {
+                                Text("Delete")
+                            }
+                        } else {
+                            OutlinedButton(
+                                onClick = { onImportLocalFile(VoiceConstants.ENGINE_BARK) }
                             ) {
                                 Text("Import File")
                             }
