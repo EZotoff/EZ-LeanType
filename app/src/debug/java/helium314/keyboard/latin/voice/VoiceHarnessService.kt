@@ -51,6 +51,9 @@ class VoiceHarnessService : Service() {
 
     private val scope = CoroutineScope(Dispatchers.Default)
     private var refineJobs = mutableListOf<Job>()
+    // Refinement that arrived before its segment was committed (async job
+    // won the race): applied at the next commit point.
+    private var pendingRefinement: Pair<String, String>? = null
 
     // Text-stage state, mirroring VoiceInputManager session state
     private var needsCapitalStart = true
@@ -67,7 +70,25 @@ class VoiceHarnessService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    override fun onCreate() {
+        super.onCreate()
+        getSystemService(android.app.NotificationManager::class.java).createNotificationChannel(
+            android.app.NotificationChannel("voice_harness", "Voice corpus harness", android.app.NotificationManager.IMPORTANCE_LOW)
+        )
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // Foreground service (shortService): shell starts us directly with
+        // `am start-foreground-service` — no trampoline activity, so corpus
+        // runs no longer pause the user's foreground app (PiP) and cannot hit
+        // the background-service-start race after a cold start.
+        startForeground(
+            4711,
+            android.app.Notification.Builder(this, "voice_harness")
+                .setSmallIcon(android.R.drawable.ic_btn_speak_now)
+                .setContentTitle("Voice corpus harness")
+                .build()
+        )
         val file = intent?.getStringExtra("file")
         if (file == null) {
             Log.e(TAG, "missing 'file' extra")
@@ -201,15 +222,21 @@ class VoiceHarnessService : Service() {
             try { pipe[1].close() } catch (_: Throwable) {}
         }
 
-        // Mirror stopVoice(): EOF above + stopSession flag -> engine flushes
-        // and fires onSessionEnded.
-        try {
-            VoiceEngineLocal.getInstance(ctx).stopSession()
-        } catch (t: Throwable) {
-            Log.e(TAG, "stopSession failed", t)
+        // Mirror stopVoice(): EOF above -> engine flushes remaining VAD
+        // segments and fires onSessionEnded AFTER those decodes (ordered on
+        // its executor). Give it that chance: an immediate stopSession
+        // cancels the flush decodes mid-flight and onSessionEnded then comes
+        // from the cancel path — the stale-partial promotion produced
+        // duplicated/truncated text (corpus B1/B2, 2026-10-25).
+        val endedGracefully = done.await(20, TimeUnit.SECONDS)
+        if (!endedGracefully) {
+            Log.w(TAG, "engine did not end after EOF; stopping session")
+            try {
+                VoiceEngineLocal.getInstance(ctx).stopSession()
+            } catch (t: Throwable) {
+                Log.e(TAG, "stopSession failed", t)
+            }
         }
-
-        done.await(180, TimeUnit.SECONDS)
         try { pipe[0].close() } catch (_: Throwable) {}
         if (engineError == null && feedError != null) engineError = "feed failed: $feedError"
 
@@ -254,8 +281,16 @@ class VoiceHarnessService : Service() {
                 val refined = VoiceAiPostProcessor.process(applicationContext, preAi, flags.customVocab)
                 VoiceAiPostProcessor.logOutcome(preAi, refined)
                 seg.put("refined", refined ?: JSONObject.NULL)
-                if (refined != null && refined != preAi) {
-                    applyRefine(preAi, refined)
+                // AI no-op (null or verbatim echo): deterministic corrector
+                // fallback for this segment — single module, never stacked.
+                val corrected = if (refined != null && refined != preAi) {
+                    refined
+                } else {
+                    VocabularyCorrector.correct(preAi, flags.customVocab)
+                }
+                if (corrected != preAi) {
+                    seg.put("correctorFallback", corrected)
+                    applyRefine(preAi, corrected)
                 }
             }
             refineJobs.add(job)
@@ -295,6 +330,8 @@ class VoiceHarnessService : Service() {
         segmentsJson.put(seg)
 
         committed.append(displayText).append(' ')
+        drainPendingRefinement()
+        Log.i(TAG, "handleFinal committed len=${committed.length}: '${trimmed.take(50)}'")
         needsCapitalStart = VoiceTranscriptPipeline.needsCapitalAfter(displayText)
         lastFinalText = displayText
         lastFinalPreAi = trimmed
@@ -302,17 +339,44 @@ class VoiceHarnessService : Service() {
         lastPartialText = null
         }
 
-    /** Mirror of replaceLastSegment: swap the just-committed segment's text. */
+    /** Mirror of replaceLastSegment: swap the just-committed segment's text.
+     * If the segment is not committed yet (async refine won the race), queue
+     * the refinement; every commit point drains the queue, so a late
+     * refinement can never splice into the end-of-session promotion commit. */
     private fun applyRefine(original: String, refined: String) = synchronized(lock) {
         val m = committed.toString()
         val idx = m.lastIndexOf(original)
+        Log.i(TAG, "applyRefine in: m=${m.length} orig=${original.length} refined=${refined.length} idx=$idx")
         if (idx >= 0) {
+            // Plain string math: the previous StringBuilder chained append
+            // resolved to an overload that appended a wrong slice and GREW the
+            // buffer (m=216,orig=215 -> 435: every applied refinement
+            // duplicated the segment). Only visible once refinements actually
+            // fire (corrector fallback); latent since the harness was added.
+            val rebuilt = m.substring(0, idx) + refined + m.substring(idx + original.length)
             committed.setLength(0)
-            committed.append(m, 0, idx).append(refined).append(m, idx + original.length)
+            committed.append(rebuilt)
+            Log.i(TAG, "applyRefine out: committed=${committed.length}")
+        } else {
+            pendingRefinement = original to refined
+        }
+    }
+
+    private fun drainPendingRefinement() = synchronized(lock) {
+        pendingRefinement?.let { (original, refined) ->
+            pendingRefinement = null
+            val m = committed.toString()
+            val idx = m.lastIndexOf(original)
+            if (idx >= 0) {
+                val rebuilt = m.substring(0, idx) + refined + m.substring(idx + original.length)
+                committed.setLength(0)
+                committed.append(rebuilt)
+            }
         }
     }
 
     private fun writeResult(wav: File, t0: Long, error: String?, flags: VoiceTranscriptPipeline.StageFlags) {
+        drainPendingRefinement()
         try {
             val out = JSONObject()
                 .put("file", wav.absolutePath)

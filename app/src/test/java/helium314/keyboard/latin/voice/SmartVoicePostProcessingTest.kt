@@ -254,6 +254,53 @@ class SmartVoicePostProcessingTest {
         assertEquals("Text: hello world", VoiceAiPostProcessor.extractAnswer("hello world", raw))
     }
 
+    // --- AI outcome tracking / session degradation (corpus finding #2) ---
+
+    @Test
+    fun refineOutcome_nullCountsAsNoProgress() {
+        VoiceAiPostProcessor.resetDegradation()
+        VoiceAiPostProcessor.registerRefineOutcome("agents Ilan and Oren", null)
+        VoiceAiPostProcessor.registerRefineOutcome("agents Ilan and Oren", null)
+        assertTrue(!VoiceAiPostProcessor.isDegradedForSession()) // 2 < MAX(3)
+        VoiceAiPostProcessor.registerRefineOutcome("agents Ilan and Oren", null)
+        assertTrue(VoiceAiPostProcessor.isDegradedForSession())
+    }
+
+    @Test
+    fun refineOutcome_unchangedEchoCountsAsNoProgress() {
+        VoiceAiPostProcessor.resetDegradation()
+        val text = "I work with Bruno and Mauru"
+        // The dead offline LLM parrots the input verbatim: never a "success".
+        VoiceAiPostProcessor.registerRefineOutcome(text, text)
+        VoiceAiPostProcessor.registerRefineOutcome(text, text)
+        VoiceAiPostProcessor.registerRefineOutcome(text, text)
+        assertTrue(VoiceAiPostProcessor.isDegradedForSession())
+    }
+
+    @Test
+    fun refineOutcome_changedResultResetsStreak() {
+        VoiceAiPostProcessor.resetDegradation()
+        val text = "I work with Bruno and Mauru"
+        VoiceAiPostProcessor.registerRefineOutcome(text, text)   // no progress
+        VoiceAiPostProcessor.registerRefineOutcome(text, "I work with Bruno and Mauro") // real fix
+        VoiceAiPostProcessor.registerRefineOutcome(text, text)   // streak restarted
+        assertTrue(!VoiceAiPostProcessor.isDegradedForSession())
+    }
+
+    @Test
+    fun refineOutcome_degradationIsSticky() {
+        VoiceAiPostProcessor.resetDegradation()
+        val text = "hello"
+        repeat(3) { VoiceAiPostProcessor.registerRefineOutcome(text, text) }
+        assertTrue(VoiceAiPostProcessor.isDegradedForSession())
+        // Even a later success does not un-degrade the session (callers stop
+        // invoking the LLM once degraded; this only guards the flag itself).
+        VoiceAiPostProcessor.registerRefineOutcome(text, "changed")
+        assertTrue(VoiceAiPostProcessor.isDegradedForSession())
+        VoiceAiPostProcessor.resetDegradation()
+        assertTrue(!VoiceAiPostProcessor.isDegradedForSession())
+    }
+
     // --- Corpus B4 mirror: punctuation through the real pipeline ---
 
     @Test

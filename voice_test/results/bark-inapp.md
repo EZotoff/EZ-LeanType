@@ -2,21 +2,20 @@
 
 | block | feature | WER | checks | segments | refined | wall s | verdict |
 |---|---|---|---|---|---|---|---|
-| B0 | calibration | 15.0% | 4/5 | 1 | 0 | 23 | FAIL |
-| B1 | validation/vocabulary | 20.4% | 11/14 | 1 | 0 | 31 | FAIL |
-| B2 | dictionary/vocabulary | 36.1% | 7/12 | 1 | 0 | 20 | FAIL |
-| B3 | homophones/context | 22.2% | 15/17 | 1 | 0 | 29 | FAIL |
+| B0 | calibration | 15.0% | 4/5 | 1 | 0 | 19 | FAIL |
+| B1 | validation/vocabulary | 22.7% | 12/14 | 1 | 0 | 28 | FAIL |
+| B2 | dictionary/vocabulary | 50.0% | 7/12 | 1 | 0 | 19 | FAIL |
+| B3 | homophones/context | 26.4% | 15/17 | 1 | 0 | 28 | FAIL |
 | B4 | punctuation | 35.3% | 10/14 | 1 | 0 | 22 | FAIL |
-| B5 | symbols/fillers/commands | 96.2% | 7/16 | 1 | 0 | 29 | FAIL |
-| B6 | long-form/segmentation | 51.1% | 5/11 | 6 | 0 | 63 | FAIL |
+| B5 | symbols/fillers/commands | 107.7% | 6/16 | 1 | 0 | 29 | FAIL |
+| B6 | long-form/segmentation | 51.1% | 5/11 | 6 | 0 | 62 | FAIL |
 
 ## B0 (calibration)
 - FAIL missing: 'voice validation'
 
 ## B1 (validation/vocabulary)
-- FAIL missing: 'Mauro'
 - FAIL missing: 'Elan'
-- FAIL missing: 'OC Beacon'
+- FAIL missing: 'Nestor'
 - known-limitation: Light LLM -> LiteLLM (needs AI provider; d2 tier misses 7-char words)
 
 ## B2 (dictionary/vocabulary)
@@ -46,6 +45,7 @@
 - FAIL missing: 'client/server'
 - FAIL missing: 'should replace the filler words'
 - FAIL forbidden present: 'open paren'
+- FAIL forbidden present: 'open quote'
 - FAIL regex newline_command (\n$|\n ) not matched
 
 ## B6 (long-form/segmentation)
@@ -65,27 +65,27 @@ This is Lintai poise validation take one. The quick brown fox jumps over the laz
 
 ### B1
 ```
-I work with Bruno and Maur on the Veran project. We use agents Ilan and Oren. I use Light LM and OC beacon. We also verify stuff and open PRs. I also run agente QA. Yesterday, Veran merged my pull request and Nestor appropriate.
+I work with Bruno and Mauro on the Veran project. We use agents Ilan and Oren. I use Light LiteLLM. and OC Beacon. We also verify stuff and open PRs. I also run agente QA. Yesterday, Veran merged my pull request.
 ```
 
 ### B2
 ```
-Qwen handles the reasoning, Light LM routes the requests, and Vercel hosts the demo. Fabro opened the ticket for Easy Omo Bench because Easy Omo Config lost its theme. Nestor moved the conf UI workflow to the new OC.
+Qwen handles the reasoning, Light LiteLLM. routes the requests, and Vercel hosts the demo. Fabro opened the ticket for Easy Omo Bench because Easy Omo Config lost its theme. Nestor removed the conf UI workflow.
 ```
 
 ### B3
 ```
-Their deploy failed because they're out of disk, so there are two options. I wait too long or write the migration right now. I accept all changes except the ones that break the build. The break fixed shipped in the first week, though the team was weak on testing. It's a peace deal. Each piece of the site cites a source you can see. We open.
+Their deploy failed because they're out of disk. So there are two options. I wait too long or write the migration right now. I accept all changes except the ones that break the build. The break fixed shipped in the first week, though the team was weak on testing. It's a peace deal. Each piece of the site cites a source you can see.
 ```
 
 ### B4
 ```
-The first rule is simple, Never skip the tests. Can I ship on Friday? I ordered three things, coffee, a charger, and patients. Semi Then I waited. Wait for it.!
+The first rule is simple, Never skip the tests. Can I ship on Friday? I ordered three things, Coffee, a charger, and patients. Semi Then I waited. Wait for it.! The building.
 ```
 
 ### B5
 ```
-(or a), then open parent count close parent. She said " ship it close quotes twice. Try an s / b test or a pass / fail check and a client / server split. We should replace the
+(or a), then open parent count close parent. She said open quotes ship it close quotes twice. Try an s / b test or a pass / fail check and a client / server split. We should replace the fill awards new line.
 ```
 
 ### B6

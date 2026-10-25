@@ -55,13 +55,23 @@ object VoiceAiPostProcessor {
     // hallucinating model replacing the dictation wholesale.
     private const val MIN_FRACTION = 0.3f
 
-    // Consecutive sanitize rejections before the offline LLM is treated as
-    // non-functional for the session (echo/continuation models never
-    // produce a single acceptable output; each attempt costs 10-60s of the
-    // single engine slot AND suppresses the deterministic corrector via
-    // isProviderAvailable, leaving dictation uncorrected).
+    // Consecutive no-progress outcomes before the offline LLM is treated as
+    // non-functional for the session. No-progress = sanitize rejection, null
+    // result (failure/timeout) OR a verbatim-unchanged result: the echo
+    // models parrot the input back, which counts as "success" for the text
+    // but never fixes anything while suppressing the deterministic corrector
+    // via isProviderAvailable (observed live: names stayed wrong, refined=0,
+    // and each dead LLM call still cost 10-60s of the single engine slot).
     private const val MAX_CONSECUTIVE_REJECTIONS = 3
     @Volatile private var consecutiveRejections = 0
+
+    /** Test/session hook: current degraded state. */
+    internal fun isDegradedForSession(): Boolean = consecutiveRejections >= MAX_CONSECUTIVE_REJECTIONS
+
+    /** Test/session hook: clear degradation + streak. */
+    internal fun resetDegradation() {
+        consecutiveRejections = 0
+    }
 
     /**
      * True if a provider is ACTUALLY usable right now (offline model loaded,
@@ -134,18 +144,17 @@ object VoiceAiPostProcessor {
             // Vocabulary correction is NOT stacked here: both successful
             // configurations were single-module, every stacked variant
             // (parallel or sequential) compounded errors. The engineered
-            // corrector is a FALLBACK: VoiceInputManager runs it only when
-            // no AI provider is usable.
+            // corrector is a FALLBACK: callers run it when the AI pass yields
+            // nothing usable for a segment, and skip the AI entirely once
+            // degraded.
             val raw = if (isLatin) runOffline(context, text, vocabulary) else null
             val fromCloud = raw ?: runCloud(context, buildPrompt(text, vocabulary))
-            if (fromCloud == null) return@withContext null
-            val clean = sanitize(text, fromCloud)
-            if (clean == null) noteRejection() else resetRejections()
-            clean
+            if (fromCloud == null) null else sanitize(text, fromCloud)
         } catch (t: Throwable) {
             Log.w(TAG, "AI post-processing failed, falling back", t)
             null
         }
+        registerRefineOutcome(text, result)
         result
     }
 
@@ -250,11 +259,32 @@ object VoiceAiPostProcessor {
         else Log.i(TAG, "refine: '$original' -> '$refined'")
     }
 
+    /**
+     * Track refine outcomes for session degradation. A null result (provider
+     * failure/timeout) or a verbatim-unchanged result proves no help is
+     * coming from the LLM; MAX in a row degrades the session
+     * ([isProviderAvailable] then reports false and callers skip the dead
+     * LLM entirely). A result that actually changed the text resets the
+     * streak.
+     */
+    internal fun registerRefineOutcome(original: String, refined: String?) {
+        if (isDegradedForSession()) return // sticky for the session
+        if (refined == null || refined == original) {
+            noteRejection()
+        } else {
+            resetRejections()
+        }
+    }
+
     private fun noteRejection() {
         consecutiveRejections++
         if (consecutiveRejections == MAX_CONSECUTIVE_REJECTIONS) {
-            Log.w(TAG, "offline LLM rejected $MAX_CONSECUTIVE_REJECTIONS outputs in a row; " +
-                "degrading to deterministic corrector for this session")
+            try {
+                Log.w(TAG, "offline LLM made no usable change $MAX_CONSECUTIVE_REJECTIONS times in a row; " +
+                    "degrading to deterministic corrector for this session")
+            } catch (_: Throwable) {
+                // android.util.Log not mocked in plain JVM unit tests
+            }
         }
     }
 

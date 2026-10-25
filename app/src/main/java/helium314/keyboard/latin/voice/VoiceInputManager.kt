@@ -654,7 +654,20 @@ class VoiceInputManager(
             if (isCurrentSessionOnline) {
                 processOnlineTranscription()
             } else {
-                pluginManager.stopSession()
+                // The engine may complete on its own from the EOF that
+                // stopAudioLoop() produced: it flushes remaining VAD segments
+                // and only then fires onSessionEnded (ordered on its decode
+                // executor). Cancelling immediately kills the final flush
+                // decode — the segment is then salvaged from the stale
+                // partial (last-word loss / duplication, observed live).
+                // Grace window before the forced stop; skipped if the
+                // session ends on its own meanwhile.
+                mainHandler.postDelayed({
+                    if (state == VoiceState.PROCESSING_FINAL) {
+                        Log.i(TAG, "engine did not end after EOF; forcing stopSession")
+                        pluginManager.stopSession()
+                    }
+                }, EOF_GRACE_MS)
             }
         }
     }
@@ -808,10 +821,19 @@ class VoiceInputManager(
                 coroutineScope.launch {
                     val refined = VoiceAiPostProcessor.process(ims, trimmed, flags.customVocab)
                     VoiceAiPostProcessor.logOutcome(trimmed, refined)
-                    if (refined != null && refined != preAiText) {
+                    // AI had nothing usable (null = failure/timeout, or a
+                    // verbatim echo of the input)? Fall back to the
+                    // deterministic corrector for THIS segment — a single
+                    // module's edits apply, never stacked with the LLM's.
+                    val corrected = if (refined != null && refined != preAiText) {
+                        refined
+                    } else {
+                        VocabularyCorrector.correct(preAiText, flags.customVocab)
+                    }
+                    if (corrected != preAiText) {
                         mainHandler.post {
                             if (activeSessionId == sessionId) {
-                                replaceLastSegment(preAiText, refined)
+                                replaceLastSegment(preAiText, corrected)
                             }
                         }
                     }
@@ -1069,6 +1091,9 @@ class VoiceInputManager(
     companion object {
         private const val TAG = "VoiceInputManager"
         private const val SAMPLE_RATE = 16000
+        // Grace window for the engine to finish its EOF flush decodes and end
+        // the session by itself before a forced stopSession cancels them.
+        private const val EOF_GRACE_MS = 5000L
         private const val FRAME_SIZE_MS = 30
         private const val FRAME_SIZE_SHORTS = SAMPLE_RATE * FRAME_SIZE_MS / 1000 // 480 shorts
         private const val FRAME_SIZE_BYTES = FRAME_SIZE_SHORTS * 2 // 960 bytes

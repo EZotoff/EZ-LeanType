@@ -1,6 +1,6 @@
 {
   "file": "\/data\/user\/0\/com.leanbitlab.leantype\/files\/voice_harness\/wav\/B3.wav",
-  "wallMs": 28817,
+  "wallMs": 28055,
   "enginePref": "bark",
   "smartPunctuation": true,
   "removeFillers": true,
@@ -23,12 +23,12 @@
     "Comfy UI",
     "Vercel"
   ],
-  "finalText": "Their deploy failed because they're out of disk, so there are two options. I wait too long or write the migration right now. I accept all changes except the ones that break the build. The break fixed shipped in the first week, though the team was weak on testing. It's a peace deal. Each piece of the site cites a source you can see. We open. ",
+  "finalText": "Their deploy failed because they're out of disk. So there are two options. I wait too long or write the migration right now. I accept all changes except the ones that break the build. The break fixed shipped in the first week, though the team was weak on testing. It's a peace deal. Each piece of the site cites a source you can see. ",
   "segments": [
     {
-      "raw": "Their deploy failed because they're out of disk, so there are two options. I wait too long or write the migration right now. I accept all changes except the ones that break the build. The break fixed shipped in the first week, though the team was weak on testing. It's a peace deal. Each piece of the site cites a source you can see. We open.",
-      "trimmed": "Their deploy failed because they're out of disk, so there are two options. I wait too long or write the migration right now. I accept all changes except the ones that break the build. The break fixed shipped in the first week, though the team was weak on testing. It's a peace deal. Each piece of the site cites a source you can see. We open.",
-      "display": "Their deploy failed because they're out of disk, so there are two options. I wait too long or write the migration right now. I accept all changes except the ones that break the build. The break fixed shipped in the first week, though the team was weak on testing. It's a peace deal. Each piece of the site cites a source you can see. We open."
+      "raw": "Their deploy failed because they're out of disk. So there are two options. I wait too long or write the migration right now. I accept all changes except the ones that break the build. The break fixed shipped in the first week, though the team was weak on testing. It's a peace deal. Each piece of the site cites a source you can see.",
+      "trimmed": "Their deploy failed because they're out of disk. So there are two options. I wait too long or write the migration right now. I accept all changes except the ones that break the build. The break fixed shipped in the first week, though the team was weak on testing. It's a peace deal. Each piece of the site cites a source you can see.",
+      "display": "Their deploy failed because they're out of disk. So there are two options. I wait too long or write the migration right now. I accept all changes except the ones that break the build. The break fixed shipped in the first week, though the team was weak on testing. It's a peace deal. Each piece of the site cites a source you can see."
     }
   ],
   "commands": [],
@@ -43,21 +43,19 @@
     "Their deploy failed because they're out of disk, so they're two options.",
     "Their deploy failed because they're out of disk, so there are two options.",
     "Their deploy failed because they're out of disk, so there are two options out of way to.",
-    "Their deploy failed because they're out of disk, so there are two options either way too long.",
-    "Their deploy failed because they're out of disk. So there are two options. I wait too long or right.",
-    "Their deploy failed because they're out of disk, so there are two options. I wait too long or right the main grade.",
-    "Their deploy failed because they're out of disk. So there are two options. I wait too long or write the migration right now.",
+    "Their deploy failed because they're out of disk, so there are two options. I wait too long or right.",
+    "Their deploy failed because they're out of disk, so there are two options. I wait too long, or right.",
+    "Their deploy failed because they're out of disk. So there are two options. I wait too long, or write the migration right.",
     "their deploy failed because they're out of disk so there are two options either way too long or write the migration right now",
-    "Their deploy failed because they're out of disk. So there are two options. I wait too long or write the migration right now. Except all changes.",
-    "Their deploy failed because they're out of disk. So there are two options. I wait too long or write the migration right now. Except all changes except the ones that break.",
-    "Their deploy failed because they're out of disk. So there are two options. Either way too long or write the migration right now. I accept all changes except the ones that break the build.",
-    "Their deploy failed because they're out of disk. So there are two options. I wait too long or write the migration right now. I accept all changes except the ones that break the build. The break fix.",
-    "Their deploy failed because they're out of disk. So there are two options. I wait too long or write the migration right now. Except all changes except the ones that break the build. The break fixed shipped. uh.",
+    "Their deploy failed because they're out of disk. So there are two options. I wait too long or write the migration right now. Except I'll change.",
+    "Their deploy failed because they're out of disk. So there are two options. I wait too long or write the migration right now. Except all changes except one.",
+    "Their deploy failed because they're out of disk. So there are two options. I wait too long or write the migration right now. I accept all changes except the ones that break the build.",
+    "Their deploy failed because they're out of disk. So there are two options. I wait too long or write the migration right now. I accept all changes except the ones that break the build. The break fixed ship.",
     "Their deploy failed because they're out of disk. So there are two options. I wait too long or write the migration right now. Except all changes except the ones that break the build. The break fixed shipped uh in the first week.",
-    "Their deploy failed because they're out of disk, so there are two options. I wait too long or write the migration right now. I accept all changes except the ones that break the build. The break fixed shipped uh in the first week, though the team was weak on test.",
-    "Their deploy failed because they're out of disk. So there are two options. I wait too long or write the migration right now. I accept all changes except the ones that break the build. The break fixed shipped in the first week, though the team was weak on testing. It's a piece.",
-    "Their deploy failed because they're out of disk. So there are two options. I wait too long or write the migration right now. I accept all changes except the ones that break the build. The break fixed shipped uh in the first week, though the team was weak on testing. It's a peace deal, each piece of the.",
-    "Their deploy failed because they're out of disk. So there are two options. I wait too long or write the migration right now. I accept all changes except the ones that break the build. The break fixed shipped in the first week, though the team was weak on testing. It's a peace deal. Each piece of the sites sites a source.",
-    "Their deploy failed because they're out of disk, so there are two options. I wait too long or write the migration right now. I accept all changes except the ones that break the build. The break fixed shipped uh in the first week, though the team was weak on testing. It's a peace deal. Each piece of the site cites a source you can see. We open."
+    "Their deploy failed because they're out of disk. So there are two options. I wait too long or write the migration right now. Except all changes except the ones that break the build. The break fixed shipped uh in the first week, though the team.",
+    "Their deploy failed because they're out of disk. So there are two options. I wait too long or write the migration right now. I accept all changes except the ones that break the build. The break fixed shipped uh in the first week, though the team was weak on testing.",
+    "Their deploy failed because they're out of disk. So there are two options either way too long or write the migration right now. I accept all changes except the ones that break the build. The break fixed shipped uh in the first week, though the team was weak on testing. It's a peace deal.",
+    "Their deploy failed because they're out of disk. So there are two options. I wait too long or write the migration right now. I accept all changes except the ones that break the build. The break fixed shipped uh in the first week, though the team was weak on testing. It's a peace deal. Each piece of the sites.",
+    "Their deploy failed because they're out of disk. So there are two options. I wait too long or write the migration right now. I accept all changes except the ones that break the build. The break fixed shipped uh in the first week, though the team was weak on testing. It's a peace deal. Each piece of the site cites a source you can see."
   ]
 }
