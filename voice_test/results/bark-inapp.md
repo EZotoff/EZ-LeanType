@@ -2,20 +2,19 @@
 
 | block | feature | WER | checks | segments | refined | wall s | verdict |
 |---|---|---|---|---|---|---|---|
-| B0 | calibration | 15.0% | 4/5 | 1 | 0 | 19 | FAIL |
-| B1 | validation/vocabulary | 22.7% | 12/14 | 1 | 0 | 28 | FAIL |
-| B2 | dictionary/vocabulary | 50.0% | 7/12 | 1 | 0 | 19 | FAIL |
-| B3 | homophones/context | 26.4% | 15/17 | 1 | 0 | 28 | FAIL |
-| B4 | punctuation | 35.3% | 10/14 | 1 | 0 | 22 | FAIL |
+| B0 | calibration | 15.0% | 4/5 | 1 | 0 | 22 | FAIL |
+| B1 | validation/vocabulary | 11.4% | 13/14 | 1 | 0 | 29 | FAIL |
+| B2 | dictionary/vocabulary | 33.3% | 7/12 | 1 | 0 | 30 | FAIL |
+| B3 | homophones/context | 15.3% | 16/17 | 1 | 0 | 29 | FAIL |
+| B4 | punctuation | 29.4% | 9/14 | 1 | 0 | 22 | FAIL |
 | B5 | symbols/fillers/commands | 107.7% | 6/16 | 1 | 0 | 29 | FAIL |
-| B6 | long-form/segmentation | 51.1% | 5/11 | 6 | 0 | 62 | FAIL |
+| B6 | long-form/segmentation | 52.2% | 5/11 | 6 | 0 | 62 | FAIL |
 
 ## B0 (calibration)
 - FAIL missing: 'voice validation'
 
 ## B1 (validation/vocabulary)
 - FAIL missing: 'Elan'
-- FAIL missing: 'Nestor'
 - known-limitation: Light LLM -> LiteLLM (needs AI provider; d2 tier misses 7-char words)
 
 ## B2 (dictionary/vocabulary)
@@ -26,14 +25,14 @@
 - FAIL forbidden present: 'easy omo'
 
 ## B3 (homophones/context)
-- FAIL missing: 'open issues'
-- FAIL missing: 'open PRs'
+- FAIL missing: 'cites a source'
 
 ## B4 (punctuation)
 - FAIL missing: 'simple, never'
 - FAIL missing: 'things: coffee'
 - FAIL missing: 'patience;'
 - FAIL missing: 'it!'
+- FAIL forbidden present: ' period'
 - known-limitation: trailing 'billing period' sentence: standalone spoken-word 'period' currently converts to '.' — trap documents which behavior wins
 
 ## B5 (symbols/fillers/commands)
@@ -65,22 +64,22 @@ This is Lintai poise validation take one. The quick brown fox jumps over the laz
 
 ### B1
 ```
-I work with Bruno and Mauro on the Veran project. We use agents Ilan and Oren. I use Light LiteLLM. and OC Beacon. We also verify stuff and open PRs. I also run agente QA. Yesterday, Veran merged my pull request.
+I work with Bruno and Mauro on the Veran project. We use agents Ilan and Oren. I use Light LM and OC Beacon. We also verify stuff and open PRs. I also run agente QA. Yesterday, Veran merged my pull request and Nestor approved it.
 ```
 
 ### B2
 ```
-Qwen handles the reasoning, Light LiteLLM. routes the requests, and Vercel hosts the demo. Fabro opened the ticket for Easy Omo Bench because Easy Omo Config lost its theme. Nestor removed the conf UI workflow.
+Qwen handles the reasoning, Light LiteLLM. routes the requests, and Vercel hosts the demo. Fabro opened the ticket for Easy Omo Bench because Easy Omo Config lost its theme. Nestor moved the Conf UI workflow to the new OCBC cluster.
 ```
 
 ### B3
 ```
-Their deploy failed because they're out of disk. So there are two options. I wait too long or write the migration right now. I accept all changes except the ones that break the build. The break fixed shipped in the first week, though the team was weak on testing. It's a peace deal. Each piece of the site cites a source you can see.
+Their deploy failed because they're out of disk, so there are two options either way too long or write the migration right now. I accept all changes except the ones that break the build. The break fixed shipped in the first week, though the team was weak on testing. It's a peace deal. Each piece of the sites sites a source you can see. We open issues and open PRs every morning.
 ```
 
 ### B4
 ```
-The first rule is simple, Never skip the tests. Can I ship on Friday? I ordered three things, Coffee, a charger, and patients. Semi Then I waited. Wait for it.! The building.
+The first rule is simple, Never skip the tests. Can I ship on Friday? I ordered three things, Coffee, a charger, and patients. Semi Then I waited. Wait for it.! The billing period and.
 ```
 
 ### B5
@@ -90,5 +89,5 @@ The first rule is simple, Never skip the tests. Can I ship on Friday? I ordered 
 
 ### B6
 ```
-Version four point two point nine fixed three crashes and shipped on twelfth October twenty twenty-six at nine forty five p. m. The US b. c. port to monitors, and about fifteen percent battery were fine. I filed l. t. - one oh four two because the iphone kept disconnecting from macros or h. t. p. / two on port eighty eighty. Later the same day, the CIQ emptied. Bruno reviewed the OC Beacon. can locks, and Oren shipped the fix before dinner. Nobody wrote it down, which is why I am dictating this instead The lesson is simple. When the tests are green, but the phone is hot, someone else is running.
+Version four point two point nine fixed three crashes and shipped on twelfth October twenty twenty-six at nine forty five p. m. The US b. c. port to monitors, and about fifteen percent battery were fine. I filed l. t. - one oh four two because the iphone kept disconnecting from Mauro s or h. t. p. / two on port eighty eighty. Later the same day, the CIQ emptied. Bruno reviewed the OC Beacon. can locks and Oren shipped the fix before dinner. Nobody wrote it down, which is why I am dictating this instead The lesson is simple. When the tests are green, but the phone is hot, someone else is running.
 ```

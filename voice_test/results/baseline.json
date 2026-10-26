@@ -13,27 +13,26 @@
     "echoDropped": [],
     "aiUsableAtStart": true,
     "refinedCount": 0,
-    "wallMs": 19155,
+    "wallMs": 21994,
     "finalText": "This is Lintai poise validation take one. The quick brown fox jumps over the lazy dog while the engine listens.",
     "known_limitations": []
   },
   {
     "id": "B1",
     "feature": "validation/vocabulary",
-    "wer": 0.2273,
-    "checks_passed": 12,
-    "checks_failed": 2,
+    "wer": 0.1136,
+    "checks_passed": 13,
+    "checks_failed": 1,
     "failures": [
-      "missing: 'Elan'",
-      "missing: 'Nestor'"
+      "missing: 'Elan'"
     ],
     "segments": 1,
     "commands": [],
     "echoDropped": [],
-    "aiUsableAtStart": false,
+    "aiUsableAtStart": true,
     "refinedCount": 0,
-    "wallMs": 28232,
-    "finalText": "I work with Bruno and Mauro on the Veran project. We use agents Ilan and Oren. I use Light LiteLLM. and OC Beacon. We also verify stuff and open PRs. I also run agente QA. Yesterday, Veran merged my pull request.",
+    "wallMs": 29328,
+    "finalText": "I work with Bruno and Mauro on the Veran project. We use agents Ilan and Oren. I use Light LM and OC Beacon. We also verify stuff and open PRs. I also run agente QA. Yesterday, Veran merged my pull request and Nestor approved it.",
     "known_limitations": [
       "Light LLM -> LiteLLM (needs AI provider; d2 tier misses 7-char words)"
     ]
@@ -41,7 +40,7 @@
   {
     "id": "B2",
     "feature": "dictionary/vocabulary",
-    "wer": 0.5,
+    "wer": 0.3333,
     "checks_passed": 7,
     "checks_failed": 5,
     "failures": [
@@ -56,48 +55,48 @@
     "echoDropped": [],
     "aiUsableAtStart": false,
     "refinedCount": 0,
-    "wallMs": 18829,
-    "finalText": "Qwen handles the reasoning, Light LiteLLM. routes the requests, and Vercel hosts the demo. Fabro opened the ticket for Easy Omo Bench because Easy Omo Config lost its theme. Nestor removed the conf UI workflow.",
+    "wallMs": 29977,
+    "finalText": "Qwen handles the reasoning, Light LiteLLM. routes the requests, and Vercel hosts the demo. Fabro opened the ticket for Easy Omo Bench because Easy Omo Config lost its theme. Nestor moved the Conf UI workflow to the new OCBC cluster.",
     "known_limitations": []
   },
   {
     "id": "B3",
     "feature": "homophones/context",
-    "wer": 0.2639,
-    "checks_passed": 15,
-    "checks_failed": 2,
+    "wer": 0.1528,
+    "checks_passed": 16,
+    "checks_failed": 1,
     "failures": [
-      "missing: 'open issues'",
-      "missing: 'open PRs'"
+      "missing: 'cites a source'"
     ],
     "segments": 1,
     "commands": [],
     "echoDropped": [],
     "aiUsableAtStart": false,
     "refinedCount": 0,
-    "wallMs": 28055,
-    "finalText": "Their deploy failed because they're out of disk. So there are two options. I wait too long or write the migration right now. I accept all changes except the ones that break the build. The break fixed shipped in the first week, though the team was weak on testing. It's a peace deal. Each piece of the site cites a source you can see.",
+    "wallMs": 28546,
+    "finalText": "Their deploy failed because they're out of disk, so there are two options either way too long or write the migration right now. I accept all changes except the ones that break the build. The break fixed shipped in the first week, though the team was weak on testing. It's a peace deal. Each piece of the sites sites a source you can see. We open issues and open PRs every morning.",
     "known_limitations": []
   },
   {
     "id": "B4",
     "feature": "punctuation",
-    "wer": 0.3529,
-    "checks_passed": 10,
-    "checks_failed": 4,
+    "wer": 0.2941,
+    "checks_passed": 9,
+    "checks_failed": 5,
     "failures": [
       "missing: 'simple, never'",
       "missing: 'things: coffee'",
       "missing: 'patience;'",
-      "missing: 'it!'"
+      "missing: 'it!'",
+      "forbidden present: ' period'"
     ],
     "segments": 1,
     "commands": [],
     "echoDropped": [],
     "aiUsableAtStart": false,
     "refinedCount": 0,
-    "wallMs": 21955,
-    "finalText": "The first rule is simple, Never skip the tests. Can I ship on Friday? I ordered three things, Coffee, a charger, and patients. Semi Then I waited. Wait for it.! The building.",
+    "wallMs": 21722,
+    "finalText": "The first rule is simple, Never skip the tests. Can I ship on Friday? I ordered three things, Coffee, a charger, and patients. Semi Then I waited. Wait for it.! The billing period and.",
     "known_limitations": [
       "trailing 'billing period' sentence: standalone spoken-word 'period' currently converts to '.' — trap documents which behavior wins"
     ]
@@ -125,14 +124,14 @@
     "echoDropped": [],
     "aiUsableAtStart": false,
     "refinedCount": 0,
-    "wallMs": 29368,
+    "wallMs": 28525,
     "finalText": "(or a), then open parent count close parent. She said open quotes ship it close quotes twice. Try an s / b test or a pass / fail check and a client / server split. We should replace the fill awards new line.",
     "known_limitations": []
   },
   {
     "id": "B6",
     "feature": "long-form/segmentation",
-    "wer": 0.5109,
+    "wer": 0.5217,
     "checks_passed": 5,
     "checks_failed": 6,
     "failures": [
@@ -148,8 +147,8 @@
     "echoDropped": [],
     "aiUsableAtStart": false,
     "refinedCount": 0,
-    "wallMs": 62418,
-    "finalText": "Version four point two point nine fixed three crashes and shipped on twelfth October twenty twenty-six at nine forty five p. m. The US b. c. port to monitors, and about fifteen percent battery were fine. I filed l. t. - one oh four two because the iphone kept disconnecting from macros or h. t. p. / two on port eighty eighty. Later the same day, the CIQ emptied. Bruno reviewed the OC Beacon. can locks, and Oren shipped the fix before dinner. Nobody wrote it down, which is why I am dictating this instead The lesson is simple. When the tests are green, but the phone is hot, someone else is running.",
+    "wallMs": 61512,
+    "finalText": "Version four point two point nine fixed three crashes and shipped on twelfth October twenty twenty-six at nine forty five p. m. The US b. c. port to monitors, and about fifteen percent battery were fine. I filed l. t. - one oh four two because the iphone kept disconnecting from Mauro s or h. t. p. / two on port eighty eighty. Later the same day, the CIQ emptied. Bruno reviewed the OC Beacon. can locks and Oren shipped the fix before dinner. Nobody wrote it down, which is why I am dictating this instead The lesson is simple. When the tests are green, but the phone is hot, someone else is running.",
     "known_limitations": [
       "digit/number formatting (4.2.9, 9:45, 2026) depends on ASR tokenization"
     ]

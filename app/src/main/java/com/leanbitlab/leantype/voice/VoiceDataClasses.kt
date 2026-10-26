@@ -101,6 +101,7 @@ object VoiceConstants {
     const val VOICE_LANG_AUTO = "auto"
     const val PREF_VOICE_CPU_THREADS = "voice_cpu_threads"
     const val PREF_VOICE_CUSTOM_PROMPT = "voice_custom_prompt"
+    const val PREF_VOICE_HOTWORDS = "voice_hotwords"
     const val PREF_VOICE_MIC_SENSITIVITY = "voice_mic_sensitivity"
     const val PREF_VOICE_MAX_DURATION_SECONDS = "voice_max_duration_seconds"
     const val PREF_OFFLINE_ENGINE = "voice_offline_engine"

@@ -561,6 +561,20 @@ fun VoiceSettingsScreen(
         }
     }
 
+    val hotwordsSetting = remember {
+        Setting(
+            key = VoiceConstants.PREF_VOICE_HOTWORDS,
+            title = "Vocabulary Hotwords",
+            description = "Boost your custom vocabulary during decoding (slightly slower, more accurate names and terms)"
+        ) {
+            SwitchPreference(
+                setting = it,
+                default = true,
+                icon = R.drawable.ic_settings_correction
+            )
+        }
+    }
+
     val aiPostProcessingSetting = remember {
         Setting(
             key = VoiceConstants.PREF_VOICE_AI_POST_PROCESSING,
@@ -941,6 +955,7 @@ fun VoiceSettingsScreen(
                             PreferenceCategory("Dictation & Behavior")
 
                             smartPunctuationSetting.Preference()
+                            hotwordsSetting.Preference()
                             silenceTimeoutSetting.Preference()
                             micSensitivitySetting.Preference()
                             maxDurationSetting.Preference()

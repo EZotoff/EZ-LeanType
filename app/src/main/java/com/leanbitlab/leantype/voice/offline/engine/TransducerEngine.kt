@@ -15,6 +15,9 @@ import com.k2fsa.sherpa.onnx.VadModelConfig
 import com.leanbitlab.leantype.voice.IVoiceCallback
 import com.leanbitlab.leantype.voice.VoiceConstants
 import com.leanbitlab.leantype.voice.VoiceSessionConfig
+import helium314.keyboard.latin.voice.HotwordsGenerator
+import helium314.keyboard.latin.voice.VoiceInputPrefs
+import helium314.keyboard.latin.utils.prefs
 import java.io.File
 import java.io.FileInputStream
 import java.nio.ByteBuffer
@@ -104,9 +107,8 @@ class TransducerEngine {
         }
 
         synchronized(nativeLock) {
-            if (recognizer != null && loadedModelDirPath == modelDir.absolutePath) {
-                return true
-            }
+            // Cache check moved below: the key includes the hotwords
+            // signature, so vocabulary edits reload the recognizer.
 
             val encoderFile = findModelFile(modelDir, listOf("encoder.int8.onnx", "encoder.fp16.onnx", "encoder.onnx", "model.int8.onnx", "gigaam_v3_e2e_rnnt_encoder_int8.onnx"))
             val decoderFile = findModelFile(modelDir, listOf("decoder.int8.onnx", "decoder.onnx", "gigaam_v3_e2e_rnnt_decoder.onnx"))
@@ -125,6 +127,36 @@ class TransducerEngine {
             vadModelPath = vadFile?.absolutePath
             Log.i(TAG, "VAD model path: $vadModelPath")
 
+            // Decoder-level vocabulary biasing (hotwords): boost the user's
+            // terms during modified_beam_search. Verified on-device 2026-10-26:
+            // recovers names AND compound terms the text-stage corrector
+            // cannot fix. Falls back to greedy decoding when disabled, no
+            // vocabulary, or file setup fails.
+            data class HotwordsSetup(val file: File, val signature: String)
+            val hotwords: HotwordsSetup? = context?.let { ctx ->
+                try {
+                    val enabled = ctx.prefs().getBoolean(VoiceConstants.PREF_VOICE_HOTWORDS, true)
+                    val vocab = VoiceInputPrefs.customVocabulary(ctx)
+                    if (!enabled || vocab.isEmpty() || decoderFile == null || joinerFile == null) return@let null
+                    val hwContent = HotwordsGenerator.hotwordsContent(vocab)
+                    if (hwContent.isEmpty()) return@let null
+                    val hwFile = File(modelDir, "hotwords.txt")
+                    if (hwFile.readText().trim() != hwContent.trim()) hwFile.writeText(hwContent)
+                    val bpeFile = File(modelDir, "bpe.vocab")
+                    val bpeContent = HotwordsGenerator.bpeVocabContent(tokensFile.readText())
+                    if (bpeFile.readText().trim() != bpeContent.trim()) bpeFile.writeText(bpeContent)
+                    HotwordsSetup(hwFile, hwContent.hashCode().toString(16) + "-" + bpeContent.hashCode().toString(16))
+                } catch (t: Throwable) {
+                    Log.w(TAG, "hotwords setup failed, using greedy decoding", t)
+                    null
+                }
+            }
+            // Reload when the vocabulary changes, not only when the model dir does.
+            val cacheKey = modelDir.absolutePath + "#" + (hotwords?.signature ?: "off")
+            if (recognizer != null && loadedModelDirPath == cacheKey) {
+                return true
+            }
+
             releaseContextSync()
 
             return try {
@@ -139,15 +171,27 @@ class TransducerEngine {
                     numThreads = 4
                     provider = "cpu"
                     modelType = "nemo_transducer"
+                    if (hotwords != null) {
+                        // bpe hotword tokenization needs the piece vocabulary
+                        modelingUnit = "bpe"
+                        bpeVocab = File(modelDir, "bpe.vocab").absolutePath
+                    }
                 }
                 val recConfig = OfflineRecognizerConfig().apply {
                     featConfig = FeatureConfig(sampleRate = 16000, featureDim = 80)
                     this.modelConfig = modelConfig
-                    decodingMethod = "greedy_search"
+                    if (hotwords != null) {
+                        decodingMethod = "modified_beam_search"
+                        maxActivePaths = 4
+                        hotwordsFile = hotwords.file.absolutePath
+                        hotwordsScore = 2.5f
+                    } else {
+                        decodingMethod = "greedy_search"
+                    }
                 }
                 recognizer = OfflineRecognizer(null, recConfig)
-                loadedModelDirPath = modelDir.absolutePath
-                Log.i(TAG, "Transducer model loaded successfully from ${modelDir.name}")
+                loadedModelDirPath = cacheKey
+                Log.i(TAG, "Transducer model loaded successfully from ${modelDir.name} (hotwords=${hotwords != null})")
                 true
             } catch (t: Throwable) {
                 Log.e(TAG, "Exception initializing transducer native engine", t)

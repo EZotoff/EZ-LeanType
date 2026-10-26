@@ -1,6 +1,6 @@
 {
   "file": "\/data\/user\/0\/com.leanbitlab.leantype\/files\/voice_harness\/wav\/B0.wav",
-  "wallMs": 22610,
+  "wallMs": 21994,
   "enginePref": "auto",
   "smartPunctuation": true,
   "removeFillers": true,
@@ -24,12 +24,12 @@
     "Vercel",
     "LeanType"
   ],
-  "finalText": "This is Lintai pois validation take one. The quick brown fox jumps over the lazy dog while the engine listens. ",
+  "finalText": "This is Lintai poise validation take one. The quick brown fox jumps over the lazy dog while the engine listens. ",
   "segments": [
     {
-      "raw": "This is Lintai pois validation take one. The quick brown fox jumps over the lazy dog while the engine listens.",
-      "trimmed": "This is Lintai pois validation take one. The quick brown fox jumps over the lazy dog while the engine listens.",
-      "display": "This is Lintai pois validation take one. The quick brown fox jumps over the lazy dog while the engine listens.",
+      "raw": "This is Lintai poise validation take one. The quick brown fox jumps over the lazy dog while the engine listens.",
+      "trimmed": "This is Lintai poise validation take one. The quick brown fox jumps over the lazy dog while the engine listens.",
+      "display": "This is Lintai poise validation take one. The quick brown fox jumps over the lazy dog while the engine listens.",
       "refined": null
     }
   ],
@@ -37,18 +37,21 @@
   "echoDropped": [],
   "partials": [
     "This is link.",
-    "This is lintype.",
-    "This is lintypoys for the.",
+    "This is link type.",
+    "This is linty poised for the.",
     "This is lintypoise validation.",
-    "This is Lin type was validation take one.",
+    "This is Linty Poise Validation take one.",
     "This is LinType voice validation take one.",
     "This is linty voice validation take one.",
-    "This is Lint iPhys validation take one. The quick.",
+    "This is Lint iPhys validation take one. The quick bronze.",
     "This is Lint iPhys validation take one. The quick brown folks.",
     "This is Lintai pois validation take one. The quick brown fox jumps.",
-    "This is Lintai pois validation take one. The quick brown fox jumps over the layer.",
+    "This is Lintai pois validation take one. The quick brown fox jumps off the layer.",
+    "This is Lintai pois validation take one. The quick brown fox jumps over the lazy dog.",
     "This is Lintai poise validation take one. The quick brown fox jumps over the lazy dog.",
     "This is Lintai poise validation take one. The quick brown fox jumps over the lazy dog. Well.",
+    "This is Lintai poise validation take one. The quick brown fox jumps over the lazy dog while the engine.",
+    "This is Lintai poise validation take one. The quick brown fox jumps over the lazy dog while the engine listenens.",
     "This is Lintai poise validation take one. The quick brown fox jumps over the lazy dog while the engine listens."
   ]
 }

@@ -256,7 +256,9 @@ dependencies {
     implementation(files("libs/sherpa-onnx.aar"))
     // On arm64 on-device builds the JVM cannot resolve DNS (see .harness/),
     // so the onnxruntime-android AAR is also seeded into the local maven repo.
-    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.20.0")
+    // 1.28.0 aligns with the ORT bundled in sherpa-onnx 2.0.0 (same C API
+    // version); pickFirst below therefore cannot break either consumer.
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.28.0")
 
     // WorkManager — required by plugins loaded via DexClassLoader.
     // ML Kit internally calls WorkManager.getInstance(context) using the host app context,

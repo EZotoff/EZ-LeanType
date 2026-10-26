@@ -1,11 +1,11 @@
 {
   "file": "\/data\/user\/0\/com.leanbitlab.leantype\/files\/voice_harness\/wav\/B1.wav",
-  "wallMs": 28232,
-  "enginePref": "bark",
+  "wallMs": 29328,
+  "enginePref": "auto",
   "smartPunctuation": true,
   "removeFillers": true,
   "aiPostProcessing": true,
-  "aiUsableAtStart": false,
+  "aiUsableAtStart": true,
   "customVocab": [
     "OC Beacon",
     "Veran",
@@ -21,40 +21,47 @@
     "agentic",
     "Fabro",
     "Comfy UI",
-    "Vercel"
+    "Vercel",
+    "LeanType"
   ],
-  "finalText": "I work with Bruno and Mauro on the Veran project. We use agents Ilan and Oren. I use Light LiteLLM. and OC Beacon. We also verify stuff and open PRs. I also run agente QA. Yesterday, Veran merged my pull request. ",
+  "finalText": "I work with Bruno and Mauro on the Veran project. We use agents Ilan and Oren. I use Light LM and OC Beacon. We also verify stuff and open PRs. I also run agente QA. Yesterday, Veran merged my pull request and Nestor approved it. ",
   "segments": [
     {
-      "raw": "I work with Bruno and Maur on the Veran project. We use agents Ilan and Oren. I use Light L. L. M. and OC beacon. We also verify stuff and open PRs. I also run agente QA. Yesterday, Veran merged my pull request.",
-      "trimmed": "I work with Bruno and Maur on the Veran project. We use agents Ilan and Oren. I use Light L. L. M. and OC beacon. We also verify stuff and open PRs. I also run agente QA. Yesterday, Veran merged my pull request.",
-      "display": "I work with Bruno and Maur on the Veran project. We use agents Ilan and Oren. I use Light L. L. M. and OC beacon. We also verify stuff and open PRs. I also run agente QA. Yesterday, Veran merged my pull request.",
+      "raw": "I work with Bruno and Mauro on the Veran project. We use agents Ilan and Oren. I use Light LM and OC beacon. We also verify stuff and open PRs. I also run agente QA. Yesterday, Veran merged my pull request and Nestor approved it.",
+      "trimmed": "I work with Bruno and Mauro on the Veran project. We use agents Ilan and Oren. I use Light LM and OC beacon. We also verify stuff and open PRs. I also run agente QA. Yesterday, Veran merged my pull request and Nestor approved it.",
+      "display": "I work with Bruno and Mauro on the Veran project. We use agents Ilan and Oren. I use Light LM and OC beacon. We also verify stuff and open PRs. I also run agente QA. Yesterday, Veran merged my pull request and Nestor approved it.",
       "refined": null,
-      "correctorFallback": "I work with Bruno and Mauro on the Veran project. We use agents Ilan and Oren. I use Light LiteLLM. and OC Beacon. We also verify stuff and open PRs. I also run agente QA. Yesterday, Veran merged my pull request."
+      "correctorFallback": "I work with Bruno and Mauro on the Veran project. We use agents Ilan and Oren. I use Light LM and OC Beacon. We also verify stuff and open PRs. I also run agente QA. Yesterday, Veran merged my pull request and Nestor approved it."
     }
   ],
   "commands": [],
   "echoDropped": [],
   "partials": [
     "I work with.",
-    "I work with Bruna.",
+    "I work with Bruno.",
     "I work with Bruno and Maur.",
     "I work with Bruno and Mauro on the",
     "I work with Bruno and Mauro on the Veran project.",
     "I work with Bruno and Maur on the Veran project.",
     "I work with Bruno and Mauro on the Veran project.",
     "I work with Bruno and Mauro on the Veran project. We use agents",
-    "I work with Bruno and Mauro on the Veran project. We use agents Ilan.",
+    "I work with Bruno and Maur on the Veran project. We use agents Ilan.",
+    "I work with Bruno and Mauro on the Veran project. We use agents Elan and Or.",
     "I work with Bruno and Maur on the Veran project. We use agents Ilan and Oren.",
-    "I work with Bruno and Maur on the Veran project. We use agents Ilan and Oren. I use.",
+    "I work with Bruno and Mauro on the Veran project. We use agents Ilan and Oren. I use.",
+    "I work with Bruno and Maur on the Veran project. We use agents Ilan and Oren. I use light.",
     "I work with Bruno and Maur on the Veran project. We use agents Ilan and Oren. I use Light L. L.",
-    "I work with Bruno and Maur on the Veran project. We use agents Ilan and Oren. I use Light L M and O CBK.",
+    "I work with Bruno and Maur on the Veran project. We use agents Ilan and Oren. I use Light L. L. M and OC.",
+    "I work with Bruno and Maur on the Veran project. We use agents Ilan and Oren. I use Light L M and OCB.",
     "I work with Bruno and Maur on the Veran project. We use agents Ilan and Oren. I use Light L. L. M. and OC Bacon. We also.",
-    "I work with Bruno and Maur on the Veran project. We use agents Ilan and Oren. I use Light L. L. M. and O. C. Beacon. We also verify stuff.",
-    "I work with Bruno and Mauro on the Veran project. We use agents Ilan and Oren. I use Light L. L. M. and O. C. Beacon. We also verify stuff and open PRs.",
-    "I work with Bruno and Mauro on the Veran project. We use agents Ilan and Oren. I use Light L. M. and OC beacon. We also verify stuff and open PRs. I also run.",
-    "I work with Bruno and Maur on the Veran project. We use agents Ilan and Oren. I use Light L.L. M and OC beacon. We also verify stuff and open PRs. I also run agente QA.",
-    "I work with Bruno and Maur on the Veran project. We use agents Ilan and Oren. I use Light LM and OC beacon. We also verify stuff and open PRs. I also run agente QA. Yesterday, Veran.",
-    "I work with Bruno and Maur on the Veran project. We use agents Ilan and Oren. I use Light L. L. M. and OC beacon. We also verify stuff and open PRs. I also run agente QA. Yesterday, Veran merged my pull request."
+    "I work with Bruno and Maur on the Veran project. We use agents Ilan and Oren. I use Light L. L. M. and OC beacon. We also verify stuff.",
+    "I work with Bruno and Maur on the Veran project. We use agents Ilan and Oren. I use Light LM and OC beacon. We also verify stuff and open PR.",
+    "I work with Bruno and Maur on the Veran project. We use agents Ilan and Oren. I use Light L. L. M. and OC beacon. We also verify stuff and open PRs.",
+    "I work with Bruno and Maur on the Veran project. We use agents Ilan and Oren. I use Light L. M. and OC beacon. We also verify stuff and open PRs. I also run.",
+    "I work with Bruno and Maur on the Veran project. We use agents Ilan and Oren. I use Light L. L. M. and O. C. Beacon. We also verify stuff and open PRs. I also run agente QA.",
+    "I work with Bruno and Maur on the Veran project. We use agents Ilan and Oren. I use Light L. M. and OC beacon. We also verify stuff and open PRs. I also run agente QA.",
+    "I work with Bruno and Maur on the Veran project. We use agents Ilan and Oren. I use Light L. L. M. and O. C. Beacon. We also verify stuff and open PRs. I also run agente QA. Yesterday, Veran merged.",
+    "I work with Bruno and Mauro on the Veran project. We use agents Ilan and Oren. I use Light L. L. M. and OC beacon. We also verify stuff and open PRs. I also run agente QA. Yesterday, Veran merged my pull request and.",
+    "I work with Bruno and Mauro on the Veran project. We use agents Ilan and Oren. I use Light LM and OC beacon. We also verify stuff and open PRs. I also run agente QA. Yesterday, Veran merged my pull request and Nestor approved it."
   ]
 }
