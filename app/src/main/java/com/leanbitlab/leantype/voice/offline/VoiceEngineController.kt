@@ -165,7 +165,7 @@ class VoiceEngineController(private val context: Context) : IVoiceEngine.Stub() 
             val isRussian = isExplicitRussian || activeLanguage.startsWith("ru")
             val isEnglish = isExplicitEnglish || activeLanguage.startsWith("en")
 
-            Log.i(TAG, "Engine routing: pref=$offlineEnginePref, lang=$lang, activeLang=$activeLanguage, isRussian=$isRussian, gigaamReady=$gigaamReady, whisperReady=$whisperReady, phononReady=$phononReady")
+            Log.i(TAG, "Engine routing: pref=$offlineEnginePref, lang=$lang, activeLang=$activeLanguage, isRussian=$isRussian, gigaamReady=$gigaamReady, whisperReady=$whisperReady, phononReady=$phononReady, barkReady=$barkReady")
 
             // 1. Explicit user engine preference
             if (offlineEnginePref == VoiceConstants.OFFLINE_ENGINE_GIGAAM) {
@@ -185,7 +185,9 @@ class VoiceEngineController(private val context: Context) : IVoiceEngine.Stub() 
                 callback.onError(VoiceConstants.VOICE_ERROR_MODEL_MISSING, "Phonon-2 model not ready. Please download it in Voice Settings.")
                 return
             } else if (offlineEnginePref == VoiceConstants.OFFLINE_ENGINE_BARK) {
-                // Opt-in high-accuracy English engine; never chosen by auto routing.
+                // Explicit selection (Auto also prefers Bark for English when
+                // the model is installed; this branch forces it even when
+                // other engines would auto-route differently).
                 if (barkReady) {
                     startBarkSession(audioInput, wrappedCallback, config, callback)
                     return
@@ -219,8 +221,14 @@ class VoiceEngineController(private val context: Context) : IVoiceEngine.Stub() 
                 callback.onError(VoiceConstants.VOICE_ERROR_MODEL_MISSING, "Russian voice typing requires GigaAM v3 or Whisper. Please download a model in Voice Settings.")
                 return
             } else if (isEnglish) {
-                // English: Phonon-2 — best accuracy and fastest decode on device;
-                // fallback to Whisper, then GigaAM.
+                // English: Bark 3.0 is the accuracy pick when its model is
+                // installed (user-validated 2026-10-25: better hearing and
+                // faster finals than Phonon streaming); Phonon-2 is the
+                // streaming fallback, then Whisper, then GigaAM.
+                if (barkReady) {
+                    startBarkSession(audioInput, wrappedCallback, config, callback)
+                    return
+                }
                 if (phononReady) {
                     startPhononSession(audioInput, wrappedCallback, config, callback)
                     return

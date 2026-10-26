@@ -91,9 +91,9 @@ LeanType is available in two purpose-built flavors designed to match your exact 
 - **Unified On-Device Speech-to-Text**: Fully integrated on-device speech recognition engine running directly inside LeanType with zero external plugin requirements.
 - **🏆 Sber GigaAM v3 E2E RNN-T (Russian SOTA)**: State-of-the-art Russian speech recognition with built-in capitalization and punctuation, achieving 8.4% WER (surpassing Whisper by 3x on Russian ASR) with real-time on-device Sherpa-ONNX execution (~205 MB).
 - **⚡ Phonon-2 (English)**: Fermion Phonon-2 (CC-BY-4.0) on onnxruntime, 5.21% WER English dictation with punctuation and casing, ~16x realtime on device (int8 ONNX, ~690 MB).
-- **🎯 Underdog Bark 3.0 (English, opt-in)**: Conway Research's Bark 3.0 (CC-BY-4.0) — 4.94% avg WER, strongest on conversational speech — on sherpa-onnx (int8 ONNX, ~684 MB). Explicit engine selection only; needs ~1.4 GB RAM while dictating. Derives from NVIDIA parakeet-tdt-0.6b-v3 and Moondream parakeet-ultra (both CC-BY-4.0); ONNX export by velddev.
+- **🎯 Underdog Bark 3.0 (English, default in Auto)**: Conway Research's Bark 3.0 (CC-BY-4.0) — 4.94% avg WER, strongest on conversational speech — on sherpa-onnx (int8 ONNX, ~684 MB). Auto mode prefers it for English when installed; needs ~1.4 GB RAM while dictating (Phonon-2 is the streaming fallback). Derives from NVIDIA parakeet-tdt-0.6b-v3 and Moondream parakeet-ultra (both CC-BY-4.0); ONNX export by velddev.
 - **🌍 Multilingual Whisper**: Embedded whisper.cpp engine supporting Whisper Large-v3-Turbo, Small, Base, and Tiny quantized models for 99+ languages.
-- **🔀 Smart Engine Auto-Routing**: Automatically routes to GigaAM v3 for Russian, Phonon-2 for English, and Whisper for other languages, or allows explicit engine selection.
+- **🔀 Smart Engine Auto-Routing**: Automatically routes to GigaAM v3 for Russian, Bark 3.0 for English (when installed; Phonon-2 otherwise), and Whisper for other languages, or allows explicit engine selection.
 - **Interactive Voice Toolbar**: Real-time waveform audio visualizer, Silero VAD silence detection, customizable silence timeout, and background keep-alive options.
 - **✍️ Handwriting Recognition**: Draw characters or words directly on an expansive writing canvas using the [LeanType Handwriting Plugin](https://github.com/LeanBitLab/Leantype-Handwriting-Plugin) (supported across all flavors), with dedicated settings and in-app/offline model management.
 
@@ -195,7 +195,7 @@ LeanType features built-in on-device STT without needing a companion voice plugi
    - Under **Custom Model**, tap **Import File**.
    - Select the downloaded `.zip` or `.bin` file from your device storage. EZ LeanType unpacks and verifies all model weights automatically.
 5. **Configure Engine**:
-   - In **Settings → Voice typing → Offline Voice Engine**, set to **Auto** (GigaAM v3 for Russian, Phonon-2 for English, Whisper for others) or explicitly select your preferred engine.
+   - In **Settings → Voice typing → Offline Voice Engine**, set to **Auto** (GigaAM v3 for Russian, Bark 3.0 for English when installed — Phonon-2 otherwise — Whisper for others) or explicitly select your preferred engine.
 6. **Start Typing**: Tap the microphone icon on the keyboard toolbar and speak!
 
 ### 3. Translation Setup (Offline & Online)

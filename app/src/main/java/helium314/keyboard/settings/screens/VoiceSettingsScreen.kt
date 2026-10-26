@@ -476,7 +476,7 @@ fun VoiceSettingsScreen(
             ListPreference(
                 setting = it,
                 items = listOf(
-                    "Auto (GigaAM for Russian, Phonon-2 for English, Whisper for other)" to VoiceConstants.OFFLINE_ENGINE_AUTO,
+                    "Auto (GigaAM for Russian, Bark 3.0 for English if installed, Phonon-2 otherwise, Whisper for other)" to VoiceConstants.OFFLINE_ENGINE_AUTO,
                     "GigaAM v3 (Russian SOTA, Punctuation & Casing)" to VoiceConstants.OFFLINE_ENGINE_GIGAAM,
                     "Phonon-2 (English, 690 MB ONNX, High Accuracy)" to VoiceConstants.OFFLINE_ENGINE_PHONON,
                     "Bark 3.0 (English, 684 MB, Max Accuracy, High RAM)" to VoiceConstants.OFFLINE_ENGINE_BARK,
