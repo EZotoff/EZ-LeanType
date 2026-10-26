@@ -3,11 +3,11 @@
 | block | feature | WER | checks | segments | refined | wall s | verdict |
 |---|---|---|---|---|---|---|---|
 | B0 | calibration | 15.0% | 4/5 | 1 | 0 | 22 | FAIL |
-| B1 | validation/vocabulary | 11.4% | 13/14 | 1 | 0 | 29 | FAIL |
-| B2 | dictionary/vocabulary | 33.3% | 7/12 | 1 | 0 | 30 | FAIL |
-| B3 | homophones/context | 15.3% | 16/17 | 1 | 0 | 29 | FAIL |
-| B4 | punctuation | 29.4% | 9/14 | 1 | 0 | 22 | FAIL |
-| B5 | symbols/fillers/commands | 107.7% | 6/16 | 1 | 0 | 29 | FAIL |
+| B1 | validation/vocabulary | 15.9% | 13/14 | 1 | 0 | 27 | FAIL |
+| B2 | dictionary/vocabulary | 19.4% | 10/12 | 1 | 0 | 26 | FAIL |
+| B3 | homophones/context | 15.3% | 16/17 | 1 | 0 | 28 | FAIL |
+| B4 | punctuation | 23.5% | 9/14 | 1 | 0 | 22 | FAIL |
+| B5 | symbols/fillers/commands | 107.7% | 6/16 | 1 | 0 | 30 | FAIL |
 | B6 | long-form/segmentation | 52.2% | 5/11 | 6 | 0 | 62 | FAIL |
 
 ## B0 (calibration)
@@ -18,11 +18,8 @@
 - known-limitation: Light LLM -> LiteLLM (needs AI provider; d2 tier misses 7-char words)
 
 ## B2 (dictionary/vocabulary)
-- FAIL missing: 'ez-omo-bench'
-- FAIL missing: 'ez-omo-config'
 - FAIL missing: 'Comfy UI'
 - FAIL missing: 'OC Beacon'
-- FAIL forbidden present: 'easy omo'
 
 ## B3 (homophones/context)
 - FAIL missing: 'cites a source'
@@ -64,12 +61,12 @@ This is Lintai poise validation take one. The quick brown fox jumps over the laz
 
 ### B1
 ```
-I work with Bruno and Mauro on the Veran project. We use agents Ilan and Oren. I use Light LM and OC Beacon. We also verify stuff and open PRs. I also run agente QA. Yesterday, Veran merged my pull request and Nestor approved it.
+I work with Bruno and Mauro on the Veran project. We use agents Ilan and Oren. I use Light LM and OC Beacon. We also verify stuff and open PRs. I also run agente QA. Yesterday, Veran merged my pull request and Nestor appropriate.
 ```
 
 ### B2
 ```
-Qwen handles the reasoning, Light LiteLLM. routes the requests, and Vercel hosts the demo. Fabro opened the ticket for Easy Omo Bench because Easy Omo Config lost its theme. Nestor moved the Conf UI workflow to the new OCBC cluster.
+Qwen handles the reasoning, Light LM routes the requests, and Vercel hosts the demo. Fabro opened the ticket for ez-omo-bench because ez-omo-config lost its theme. Nestor moved the conf UI workflow to the new OC.
 ```
 
 ### B3
@@ -79,7 +76,7 @@ Their deploy failed because they're out of disk, so there are two options either
 
 ### B4
 ```
-The first rule is simple, Never skip the tests. Can I ship on Friday? I ordered three things, Coffee, a charger, and patients. Semi Then I waited. Wait for it.! The billing period and.
+The first rule is simple, Never skip the tests. Can I ship on Friday? I ordered three things, Coffee, a charger, and patients. Semi Then I waited. Wait for it.! The billing period ends Friday.
 ```
 
 ### B5

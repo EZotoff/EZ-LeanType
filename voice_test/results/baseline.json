@@ -13,14 +13,14 @@
     "echoDropped": [],
     "aiUsableAtStart": true,
     "refinedCount": 0,
-    "wallMs": 21994,
+    "wallMs": 22216,
     "finalText": "This is Lintai poise validation take one. The quick brown fox jumps over the lazy dog while the engine listens.",
     "known_limitations": []
   },
   {
     "id": "B1",
     "feature": "validation/vocabulary",
-    "wer": 0.1136,
+    "wer": 0.1591,
     "checks_passed": 13,
     "checks_failed": 1,
     "failures": [
@@ -31,8 +31,8 @@
     "echoDropped": [],
     "aiUsableAtStart": true,
     "refinedCount": 0,
-    "wallMs": 29328,
-    "finalText": "I work with Bruno and Mauro on the Veran project. We use agents Ilan and Oren. I use Light LM and OC Beacon. We also verify stuff and open PRs. I also run agente QA. Yesterday, Veran merged my pull request and Nestor approved it.",
+    "wallMs": 26544,
+    "finalText": "I work with Bruno and Mauro on the Veran project. We use agents Ilan and Oren. I use Light LM and OC Beacon. We also verify stuff and open PRs. I also run agente QA. Yesterday, Veran merged my pull request and Nestor appropriate.",
     "known_limitations": [
       "Light LLM -> LiteLLM (needs AI provider; d2 tier misses 7-char words)"
     ]
@@ -40,23 +40,20 @@
   {
     "id": "B2",
     "feature": "dictionary/vocabulary",
-    "wer": 0.3333,
-    "checks_passed": 7,
-    "checks_failed": 5,
+    "wer": 0.1944,
+    "checks_passed": 10,
+    "checks_failed": 2,
     "failures": [
-      "missing: 'ez-omo-bench'",
-      "missing: 'ez-omo-config'",
       "missing: 'Comfy UI'",
-      "missing: 'OC Beacon'",
-      "forbidden present: 'easy omo'"
+      "missing: 'OC Beacon'"
     ],
     "segments": 1,
     "commands": [],
     "echoDropped": [],
     "aiUsableAtStart": false,
     "refinedCount": 0,
-    "wallMs": 29977,
-    "finalText": "Qwen handles the reasoning, Light LiteLLM. routes the requests, and Vercel hosts the demo. Fabro opened the ticket for Easy Omo Bench because Easy Omo Config lost its theme. Nestor moved the Conf UI workflow to the new OCBC cluster.",
+    "wallMs": 25515,
+    "finalText": "Qwen handles the reasoning, Light LM routes the requests, and Vercel hosts the demo. Fabro opened the ticket for ez-omo-bench because ez-omo-config lost its theme. Nestor moved the conf UI workflow to the new OC.",
     "known_limitations": []
   },
   {
@@ -73,14 +70,14 @@
     "echoDropped": [],
     "aiUsableAtStart": false,
     "refinedCount": 0,
-    "wallMs": 28546,
+    "wallMs": 27842,
     "finalText": "Their deploy failed because they're out of disk, so there are two options either way too long or write the migration right now. I accept all changes except the ones that break the build. The break fixed shipped in the first week, though the team was weak on testing. It's a peace deal. Each piece of the sites sites a source you can see. We open issues and open PRs every morning.",
     "known_limitations": []
   },
   {
     "id": "B4",
     "feature": "punctuation",
-    "wer": 0.2941,
+    "wer": 0.2353,
     "checks_passed": 9,
     "checks_failed": 5,
     "failures": [
@@ -95,8 +92,8 @@
     "echoDropped": [],
     "aiUsableAtStart": false,
     "refinedCount": 0,
-    "wallMs": 21722,
-    "finalText": "The first rule is simple, Never skip the tests. Can I ship on Friday? I ordered three things, Coffee, a charger, and patients. Semi Then I waited. Wait for it.! The billing period and.",
+    "wallMs": 22151,
+    "finalText": "The first rule is simple, Never skip the tests. Can I ship on Friday? I ordered three things, Coffee, a charger, and patients. Semi Then I waited. Wait for it.! The billing period ends Friday.",
     "known_limitations": [
       "trailing 'billing period' sentence: standalone spoken-word 'period' currently converts to '.' — trap documents which behavior wins"
     ]
@@ -124,7 +121,7 @@
     "echoDropped": [],
     "aiUsableAtStart": false,
     "refinedCount": 0,
-    "wallMs": 28525,
+    "wallMs": 29598,
     "finalText": "(or a), then open parent count close parent. She said open quotes ship it close quotes twice. Try an s / b test or a pass / fail check and a client / server split. We should replace the fill awards new line.",
     "known_limitations": []
   },
@@ -147,7 +144,7 @@
     "echoDropped": [],
     "aiUsableAtStart": false,
     "refinedCount": 0,
-    "wallMs": 61512,
+    "wallMs": 61919,
     "finalText": "Version four point two point nine fixed three crashes and shipped on twelfth October twenty twenty-six at nine forty five p. m. The US b. c. port to monitors, and about fifteen percent battery were fine. I filed l. t. - one oh four two because the iphone kept disconnecting from Mauro s or h. t. p. / two on port eighty eighty. Later the same day, the CIQ emptied. Bruno reviewed the OC Beacon. can locks and Oren shipped the fix before dinner. Nobody wrote it down, which is why I am dictating this instead The lesson is simple. When the tests are green, but the phone is hot, someone else is running.",
     "known_limitations": [
       "digit/number formatting (4.2.9, 9:45, 2026) depends on ASR tokenization"

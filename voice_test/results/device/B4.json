@@ -1,6 +1,6 @@
 {
   "file": "\/data\/user\/0\/com.leanbitlab.leantype\/files\/voice_harness\/wav\/B4.wav",
-  "wallMs": 21722,
+  "wallMs": 22151,
   "enginePref": "auto",
   "smartPunctuation": true,
   "removeFillers": true,
@@ -24,12 +24,12 @@
     "Vercel",
     "LeanType"
   ],
-  "finalText": "The first rule is simple, Never skip the tests. Can I ship on Friday? I ordered three things, Coffee, a charger, and patients. Semi Then I waited. Wait for it.! The billing period and. ",
+  "finalText": "The first rule is simple, Never skip the tests. Can I ship on Friday? I ordered three things, Coffee, a charger, and patients. Semi Then I waited. Wait for it.! The billing period ends Friday. ",
   "segments": [
     {
-      "raw": "The first rule is simple, Never skip the tests. Can I ship on Friday? I ordered three things, Coffee, a charger, and patients. Semi Then I waited. Wait for it.! The billing period and.",
-      "trimmed": "The first rule is simple, Never skip the tests. Can I ship on Friday? I ordered three things, Coffee, a charger, and patients. Semi Then I waited. Wait for it.! The billing period and.",
-      "display": "The first rule is simple, Never skip the tests. Can I ship on Friday? I ordered three things, Coffee, a charger, and patients. Semi Then I waited. Wait for it.! The billing period and."
+      "raw": "The first rule is simple, Never skip the tests. Can I ship on Friday? I ordered three things, Coffee, a charger, and patients. Semi Then I waited. Wait for it.! The billing period ends Friday.",
+      "trimmed": "The first rule is simple, Never skip the tests. Can I ship on Friday? I ordered three things, Coffee, a charger, and patients. Semi Then I waited. Wait for it.! The billing period ends Friday.",
+      "display": "The first rule is simple, Never skip the tests. Can I ship on Friday? I ordered three things, Coffee, a charger, and patients. Semi Then I waited. Wait for it.! The billing period ends Friday."
     }
   ],
   "commands": [],
@@ -48,6 +48,7 @@
     "The first rule is simple, comma never skip the tests period. Can I ship on Friday? Question mark.",
     "The first rule is simple, comma. Never skip the tests period. Can I ship on Friday? Question mark.",
     "The first rule is simple, comma never skip the tests period. Can I ship on Friday? Question mark.",
+    "The first rule is simple, comma never skip the tests period. Can I ship on Friday? Question mark. I ordered",
     "The first rule is simple, comma. Never skip the tests period. Can I ship on Friday? Question mark. I ordered three.",
     "The first rule is simple, comma. Never skip the tests period. Can I ship on Friday? Question mark. I ordered three things, Colonel.",
     "The first rule is simple, comma. Never skip the tests period. Can I ship on Friday? Question mark. I ordered three things, colon coffee, comma.",
@@ -56,9 +57,9 @@
     "The first rule is simple, comma. Never skip the tests period. Can I ship on Friday? Question mark. I ordered three things, colon coffee, comma, a charger, comma, and patients. Semicolon.",
     "The first rule is simple, comma. Never skip the tests period. Can I ship on Friday? Question mark. I ordered three things, colon coffee, coma, a charger, comma, and patients. Semi colon.",
     "The first rule is simple, coma. Never skip the tests period. Can I ship on Friday? Question mark. I ordered three things, Colonel, coffee, coma, a charger, coma, and patients,<unk> said me, Colonel. Then I waited.",
-    "The first rule is simple, comma. Never skip the tests period. Can I ship on Friday? Question mark. I ordered three things, colon. Coffee, coma, a charger, coma, and patients. Semi colon. Then I waited.",
-    "The first rule is simple, coma. Never skip the tests period. Can I ship on Friday? Question mark. I ordered three things, colon. Coffee, coma, a charger, coma, and patients. Semi colon. Then I waited. Wait for it. Exclamation mark.",
-    "The first rule is simple, comma. Never skip the tests period. Can I ship on Friday? Question mark. I ordered three things, colon. Coffee, coma, a charger, coma, and patients. Semi colon. Then I waited. Wait for it. Exclamation mark.",
-    "The first rule is simple, coma. Never skip the tests period. Can I ship on Friday? Question mark. I ordered three things, colon. Coffee, coma, a charger, coma, and patients. Semi colon. Then I waited. Wait for it. Exclamation mark. The billing period and."
+    "The first rule is simple, coma. Never skip the tests period. Can I ship on Friday? Question mark. I ordered three things, colon. Coffee, coma, a charger, coma, and patients. Semi colon. Then I waited. Wait for it.",
+    "The first rule is simple, coma. Never skip the tests period. Can I ship on Friday? Question mark. I ordered three things, Colonel, coffee, coma, a charger, coma, and patients. Semi colon. Then I waited. Wait for it. Exclamation mark.",
+    "The first rule is simple, coma. Never skip the tests period. Can I ship on Friday? Question mark. I ordered three things, colon. Coffee, coma, a charger, coma, and patients. Semi colon. Then I waited. Wait for it. Exclamation mark. The building.",
+    "The first rule is simple, coma. Never skip the tests period. Can I ship on Friday? Question mark. I ordered three things, colon. Coffee, coma, a charger, coma, and patients. Semi colon. Then I waited. Wait for it. Exclamation mark. The billing period ends Friday."
   ]
 }

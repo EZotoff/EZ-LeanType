@@ -130,6 +130,7 @@ object VocabularyCorrector {
 
             val tokens = text.split(' ').filter { it.isNotEmpty() }
             val out = mutableListOf<String>()
+            val isTerm = mutableListOf<Boolean>()
             var i = 0
             while (i < tokens.size) {
                 var matched = false
@@ -138,17 +139,35 @@ object VocabularyCorrector {
                     val window = tokens.subList(i, i + size)
                     val result = matchWindow(window, compressed)
                     if (result != null) {
-                        out.add(result)
-                        i += size
+                        // Extend across a following single-letter run that
+                        // belongs to the same term ("Lite L L" + "M"): the
+                        // longest-window-first order can stop one short.
+                        val resultC = compress(result)
+                        var ext = size
+                        while (i + ext < tokens.size) {
+                            val next = stripToken(tokens[i + ext])
+                            val nextC = compress(next)
+                            if (next.length != 1 || nextC.isEmpty()) break
+                            val windowC = compress(tokens.subList(i, i + ext).joinToString(""))
+                            if (!resultC.contains(windowC + nextC)) break
+                            ext++
+                        }
+                        val finalWindow = tokens.subList(i, i + ext)
+                        val finalResult = if (ext > size) matchWindow(finalWindow, compressed) ?: result else result
+                        out.add(finalResult)
+                        isTerm.add(true)
+                        i += ext
                         matched = true
                         break
                     }
                 }
                 if (!matched) {
                     out.add(tokens[i])
+                    isTerm.add(false)
                     i++
                 }
             }
+            dropDuplicatePrefixes(out, isTerm, compressed)
             out.joinToString(" ")
         } catch (_: Throwable) {
             text
@@ -185,7 +204,10 @@ object VocabularyCorrector {
         // Distance tier: require the first letter to match — recognition
         // near-misses rarely mangle the onset — and keep distances tight;
         // loose tiers caused real false positives ("likely" -> "LiteLLM").
+        // The >=10 tier catches decoders that prefer a common word over a
+        // boosted short first word ("Easy Omo Bench" vs ez-omo-bench, d=3).
         val maxDist = when {
+            joined.length >= 10 -> 3
             joined.length >= 8 -> 2
             joined.length >= 4 -> 1
             else -> return null
@@ -220,6 +242,49 @@ object VocabularyCorrector {
 
     private fun compress(s: String): String =
         s.filter { it.isLetterOrDigit() }.lowercase(Locale.ROOT)
+
+    /**
+     * Drop a token that immediately precedes a matched vocabulary term and
+     * is just the term's spoken first word lingering before the boosted
+     * form ("Light LiteLLM" -> "LiteLLM"): >=60% of the token's letters must
+     * appear in order within the head of the term. Never drops common words
+     * or tokens that are themselves vocabulary terms.
+     */
+    private fun dropDuplicatePrefixes(out: MutableList<String>, isTerm: MutableList<Boolean>, compressed: Map<String, String>) {
+        if (out.size < 2) return
+        val drop = BooleanArray(out.size)
+        for (i in 0 until out.size - 1) {
+            if (isTerm[i] || !isTerm[i + 1]) continue
+            val tokenC = compress(out[i])
+            if (tokenC.length < 3 || tokenC.length > 8) continue
+            if (tokenC in compressed.values.map { compress(it) }) continue
+            if (out[i].lowercase(Locale.ROOT) in COMMON_WORDS) continue
+            val termC = compress(out[i + 1])
+            // ordered match: token letters found in order in the head of the
+            // term (unmatched token letters are skipped, e.g. "light" ->
+            // l,i,*,*,t against "litellm" = 3/5)
+            var ti = 0
+            var matched = 0
+            for (c in tokenC) {
+                val limit = minOf(termC.length, tokenC.length + 2)
+                var k = ti
+                while (k < limit) {
+                    if (termC[k] == c) { matched++; ti = k + 1; break }
+                    k++
+                }
+            }
+            if (matched >= tokenC.length * 0.6) drop[i] = true
+        }
+        var w = 0
+        for (i in out.indices) {
+            if (!drop[i]) {
+                out[w] = out[i]
+                isTerm[w] = isTerm[i]
+                w++
+            }
+        }
+        while (out.size > w) { out.removeAt(out.size - 1); isTerm.removeAt(isTerm.size - 1) }
+    }
 
     private fun stripToken(token: String): String =
         token.trim { !it.isLetterOrDigit() && it != '\'' }
